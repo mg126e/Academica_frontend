@@ -110,7 +110,7 @@ src/
 
 ## API Integration
 
-The application integrates with a backend API running on `http://localhost:8000`. The following endpoints are supported:
+The application integrates with a backend API running on `http://localhost:8001`. The following endpoints are supported:
 
 ### Course Management
 - `POST /api/CourseScheduling/createCourse`

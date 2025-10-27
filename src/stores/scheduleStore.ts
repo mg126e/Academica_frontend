@@ -2,13 +2,21 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Schedule } from '../types/api'
 import { CourseSchedulingApi, ApiServiceError } from '../services/api'
+import { useSessionStore } from './sessionStore'
+import { useAuthStore } from './authStore'
 
 export const useScheduleStore = defineStore('schedule', () => {
   // State
   const schedules = ref<Schedule[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const currentUserId = ref<string>('user-1') // Default user ID for demo
+  
+  // Get auth store for current user
+  const authStore = useAuthStore()
+  const sessionStore = useSessionStore()
+  
+  // Get current user ID from auth store
+  const currentUserId = computed(() => authStore.user?._id || '')
 
   // Getters
   const scheduleCount = computed(() => schedules.value.length)
@@ -25,9 +33,7 @@ export const useScheduleStore = defineStore('schedule', () => {
     error.value = null
   }
 
-  const setCurrentUserId = (userId: string) => {
-    currentUserId.value = userId
-  }
+  // Remove setCurrentUserId since we now use computed currentUserId from auth store
 
   const fetchAllSchedules = async () => {
     loading.value = true
@@ -46,17 +52,49 @@ export const useScheduleStore = defineStore('schedule', () => {
   const createSchedule = async (name: string) => {
     loading.value = true
     clearError()
+    
+    // Validate inputs
+    if (!currentUserId.value) {
+      const errorMsg = 'No user ID available. Please ensure you are logged in.'
+      setError(errorMsg)
+      console.error('Create schedule error:', errorMsg)
+      loading.value = false
+      throw new Error(errorMsg)
+    }
+    
+    if (!name || !name.trim()) {
+      const errorMsg = 'Schedule name is required.'
+      setError(errorMsg)
+      console.error('Create schedule error:', errorMsg)
+      loading.value = false
+      throw new Error(errorMsg)
+    }
+    
     try {
-      const response = await CourseSchedulingApi.createSchedule({
+      const requestData = {
         userId: currentUserId.value,
-        name
-      })
+        name: name.trim()
+      }
+      
+      console.log('Creating schedule with request data:', requestData)
+      console.log('Current user ID type:', typeof currentUserId.value)
+      console.log('Schedule name type:', typeof name)
+      
+      const response = await CourseSchedulingApi.createSchedule(requestData)
+      console.log('Create schedule response:', response)
+      
       schedules.value.push(response.s)
       return response.s
     } catch (err) {
       const errorMessage = err instanceof ApiServiceError ? err.message : 'Failed to create schedule'
       setError(errorMessage)
       console.error('Error creating schedule:', err)
+      console.error('Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        userId: currentUserId.value,
+        name: name
+      })
       throw err
     } finally {
       loading.value = false
@@ -72,6 +110,7 @@ export const useScheduleStore = defineStore('schedule', () => {
         scheduleId
       })
       schedules.value = schedules.value.filter(s => s.id !== scheduleId)
+      console.log(`Successfully deleted schedule: ${scheduleId}`)
     } catch (err) {
       const errorMessage = err instanceof ApiServiceError ? err.message : 'Failed to delete schedule'
       setError(errorMessage)
@@ -172,7 +211,6 @@ export const useScheduleStore = defineStore('schedule', () => {
     addSectionToSchedule,
     removeSectionFromSchedule,
     getScheduleById,
-    setCurrentUserId,
     setError,
     clearError
   }

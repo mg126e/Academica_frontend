@@ -13,8 +13,9 @@
     </div>
 
     <!-- Error Display -->
-    <div v-else-if="error" class="error-message">
-      {{ error }}
+    <div v-else-if="error || scheduleStore.error" class="error-message">
+      {{ error || scheduleStore.error }}
+      <button v-if="scheduleStore.error" @click="scheduleStore.clearError" class="btn-close">×</button>
     </div>
 
     <!-- Schedule Content -->
@@ -28,10 +29,6 @@
               <span>{{ schedule.name }}</span>
             </div>
             <div class="info-item">
-              <label>Owner:</label>
-              <span>{{ schedule.owner }}</span>
-            </div>
-            <div class="info-item">
               <label>Total Sections:</label>
               <span>{{ schedule.sectionIds.length }}</span>
             </div>
@@ -41,7 +38,23 @@
         <!-- Add Section Form -->
         <div class="add-section-form">
           <h2>Add Section to Schedule</h2>
-          <form @submit.prevent="handleAddSection">
+          
+          <!-- No Sections Warning -->
+          <div v-if="sectionStore.sections.length === 0" class="warning-message">
+            <p><strong>No sections available.</strong></p>
+            <p>You need to create sections before you can add them to a schedule.</p>
+            <RouterLink to="/sections" class="btn btn-primary">
+              Go to Sections Page
+            </RouterLink>
+          </div>
+          
+          <!-- No Available Sections Warning -->
+          <div v-else-if="availableSections.length === 0" class="info-message">
+            <p>All available sections have been added to this schedule.</p>
+          </div>
+          
+          <!-- Add Section Form -->
+          <form v-else @submit.prevent="handleAddSection">
             <div class="form-group">
               <label for="sectionSelect">Select Section:</label>
               <select id="sectionSelect" v-model="selectedSectionId" required>
@@ -89,7 +102,7 @@
               >
                 <span class="days">{{ timeSlot.days.join(', ') }}</span>
                 <span class="time">{{ timeSlot.startTime }} - {{ timeSlot.endTime }}</span>
-                <span class="location">{{ timeSlot.location }}</span>
+                <span v-if="timeSlot.location" class="location">{{ timeSlot.location }}</span>
               </div>
             </div>
             <div class="section-actions">
@@ -473,6 +486,49 @@ watch(scheduleId, () => {
   padding: 1rem;
   border-radius: 4px;
   margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.warning-message {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 1.5rem;
+  border-radius: 4px;
+  border: 1px solid #ffeaa7;
+  text-align: center;
+}
+
+.warning-message p {
+  margin: 0.5rem 0;
+}
+
+.warning-message .btn {
+  margin-top: 1rem;
+}
+
+.info-message {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid #bee5eb;
+  text-align: center;
+}
+
+.info-message p {
+  margin: 0;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #721c24;
+  padding: 0;
+  margin-left: 1rem;
 }
 
 .empty-state {

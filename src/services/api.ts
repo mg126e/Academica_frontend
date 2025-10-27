@@ -17,10 +17,51 @@ import type {
   DuplicateScheduleResponse,
   GetCourseRequest,
   GetSectionRequest,
-  ApiError as ApiErrorType
+  ApiError as ApiErrorType,
+  // CourseFiltering types
+  Tag,
+  FilteredCourse,
+  AddTagRequest,
+  AddTagResponse,
+  RemoveTagRequest,
+  RemoveTagResponse,
+  ClearTagsResponse,
+  GetFilteredCoursesResponse,
+  GetActiveTagsResponse,
+  SuggestAlternativesRequest,
+  SuggestAlternativesResponse,
+  // UserAuth types
+  User,
+  RegisterRequest,
+  RegisterResponse,
+  ConfirmRequest,
+  ConfirmResponse,
+  AuthenticateRequest,
+  AuthenticateResponse,
+  // Session types
+  Session,
+  StartSessionRequest,
+  StartSessionResponse,
+  EndSessionRequest,
+  EndSessionResponse,
+  UseSessionRequest,
+  UseSessionResponse,
+  ExtendSessionRequest,
+  ExtendSessionResponse,
+  ExpireSessionsResponse,
+  // ProfessorRatings types
+  ProfessorRating,
+  GetRatingForSectionRequest,
+  GetRatingForSectionResponse,
+  RefreshRatingRequest,
+  RefreshRatingResponse
 } from '../types/api'
 
-const API_BASE_URL = 'http://localhost:8000/CourseScheduling'
+const API_BASE_URL = '/api/CourseScheduling'
+const COURSE_FILTERING_BASE_URL = '/api/CourseFiltering'
+const USER_AUTH_BASE_URL = '/api/UserAuth'
+const SESSION_BASE_URL = '/api/Session'
+const PROFESSOR_RATINGS_BASE_URL = '/api/ProfessorRatings'
 
 class ApiServiceError extends Error {
   constructor(message: string) {
@@ -31,9 +72,10 @@ class ApiServiceError extends Error {
 
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  baseUrl: string = API_BASE_URL
 ): Promise<T> {
-  const url = `${API_BASE_URL}/${endpoint}`
+  const url = `${baseUrl}/${endpoint}`
   
   const defaultOptions: RequestInit = {
     headers: {
@@ -41,20 +83,67 @@ async function apiRequest<T>(
     },
   }
 
-  const response = await fetch(url, { ...defaultOptions, ...options })
+  console.log(`Making API request to: ${url}`)
+  console.log(`Request options:`, { ...defaultOptions, ...options })
   
-  if (!response.ok) {
-    throw new ApiServiceError(`HTTP error! status: ${response.status}`)
-  }
+  try {
+    const response = await fetch(url, { ...defaultOptions, ...options })
+    
+    console.log(`Response status: ${response.status} for ${url}`)
+    console.log(`Response headers:`, Object.fromEntries(response.headers.entries()))
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`API Error for ${url}:`, errorText)
+      console.error(`Response status: ${response.status}`)
+      console.error(`Request body:`, options.body)
+      
+      // Try to parse error response as JSON
+      let errorDetails = null
+      try {
+        errorDetails = JSON.parse(errorText)
+        console.error('Parsed error details:', errorDetails)
+      } catch (e) {
+        console.error('Could not parse error response as JSON:', e)
+      }
+      
+      // Provide specific error messages based on status codes
+      let errorMessage = ''
+      switch (response.status) {
+        case 400:
+          errorMessage = errorDetails?.message || 'Bad request. Please check your input data.'
+          break
+        case 401:
+          errorMessage = 'Unauthorized access. Please check your credentials.'
+          break
+        case 404:
+          errorMessage = 'Resource not found. The requested item may have been deleted.'
+          break
+        case 500:
+          errorMessage = errorDetails?.message || 'Internal server error. Please try again later.'
+          break
+        default:
+          errorMessage = `HTTP error! status: ${response.status} - ${errorText}`
+      }
+      
+      throw new ApiServiceError(errorMessage)
+    }
 
-  const data = await response.json()
-  
-  // Check if the response contains an error
-  if ('error' in data) {
-    throw new ApiServiceError(data.error)
-  }
+    const data = await response.json()
+    
+    // Check if the response contains an error
+    if (data && typeof data === 'object' && 'error' in data) {
+      throw new ApiServiceError(data.error)
+    }
 
-  return data
+    return data
+  } catch (error) {
+    if (error instanceof ApiServiceError) {
+      throw error
+    }
+    console.error(`Network error for ${url}:`, error)
+    throw new ApiServiceError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
 }
 
 export class CourseSchedulingApi {
@@ -111,6 +200,7 @@ export class CourseSchedulingApi {
 
   // Schedule Management
   static async createSchedule(request: CreateScheduleRequest): Promise<CreateScheduleResponse> {
+    console.log('Creating schedule with request:', request)
     return apiRequest<CreateScheduleResponse>('createSchedule', {
       method: 'POST',
       body: JSON.stringify(request)
@@ -151,6 +241,145 @@ export class CourseSchedulingApi {
       method: 'POST',
       body: JSON.stringify(request)
     })
+  }
+}
+
+export class CourseFilteringApi {
+  // Tag Management
+  static async addTag(request: AddTagRequest): Promise<AddTagResponse> {
+    return apiRequest<AddTagResponse>('addTag', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, COURSE_FILTERING_BASE_URL)
+  }
+
+  static async removeTag(request: RemoveTagRequest): Promise<RemoveTagResponse> {
+    return apiRequest<RemoveTagResponse>('removeTag', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, COURSE_FILTERING_BASE_URL)
+  }
+
+  static async clearTags(): Promise<ClearTagsResponse> {
+    return apiRequest<ClearTagsResponse>('clearTags', {
+      method: 'POST',
+      body: JSON.stringify({})
+    }, COURSE_FILTERING_BASE_URL)
+  }
+
+  // Course Filtering
+  static async getFilteredCourses(): Promise<FilteredCourse[]> {
+    return apiRequest<FilteredCourse[]>('getFilteredCourses', {
+      method: 'POST',
+      body: JSON.stringify({})
+    }, COURSE_FILTERING_BASE_URL)
+  }
+
+  static async getActiveTags(): Promise<Tag[]> {
+    return apiRequest<Tag[]>('getActiveTags', {
+      method: 'POST',
+      body: JSON.stringify({})
+    }, COURSE_FILTERING_BASE_URL)
+  }
+
+  static async suggestAlternatives(request: SuggestAlternativesRequest): Promise<FilteredCourse[]> {
+    return apiRequest<FilteredCourse[]>('suggestAlternatives', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, COURSE_FILTERING_BASE_URL)
+  }
+}
+
+export class UserAuthApi {
+  // User Authentication
+  static async register(request: RegisterRequest): Promise<RegisterResponse> {
+    return apiRequest<RegisterResponse>('register', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, USER_AUTH_BASE_URL)
+  }
+
+  static async confirm(request: ConfirmRequest): Promise<ConfirmResponse> {
+    return apiRequest<ConfirmResponse>('confirm', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, USER_AUTH_BASE_URL)
+  }
+
+  static async authenticate(request: AuthenticateRequest): Promise<AuthenticateResponse> {
+    return apiRequest<AuthenticateResponse>('authenticate', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, USER_AUTH_BASE_URL)
+  }
+}
+
+export class SessionApi {
+  // Session Management
+  static async startSession(request: StartSessionRequest): Promise<StartSessionResponse> {
+    return apiRequest<StartSessionResponse>('startSession', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, SESSION_BASE_URL)
+  }
+
+  static async endSession(request: EndSessionRequest): Promise<EndSessionResponse> {
+    return apiRequest<EndSessionResponse>('endSession', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, SESSION_BASE_URL)
+  }
+
+  static async useSession(request: UseSessionRequest): Promise<UseSessionResponse> {
+    return apiRequest<UseSessionResponse>('useSession', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, SESSION_BASE_URL)
+  }
+
+  static async extendSession(request: ExtendSessionRequest): Promise<ExtendSessionResponse> {
+    return apiRequest<ExtendSessionResponse>('extendSession', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, SESSION_BASE_URL)
+  }
+
+  static async expireSessions(): Promise<ExpireSessionsResponse> {
+    return apiRequest<ExpireSessionsResponse>('expireSessions', {
+      method: 'POST',
+      body: JSON.stringify({})
+    }, SESSION_BASE_URL)
+  }
+}
+
+export class ProfessorRatingsApi {
+  // Professor Ratings Management
+  static async getRatingForSection(request: GetRatingForSectionRequest): Promise<GetRatingForSectionResponse> {
+    return apiRequest<GetRatingForSectionResponse>('getRatingForSection', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, PROFESSOR_RATINGS_BASE_URL)
+  }
+
+  static async refreshRating(request: RefreshRatingRequest): Promise<RefreshRatingResponse> {
+    return apiRequest<RefreshRatingResponse>('refreshRating', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    }, PROFESSOR_RATINGS_BASE_URL)
+  }
+
+  static async getAllCachedRatings(): Promise<ProfessorRating[]> {
+    return apiRequest<ProfessorRating[]>('getAllCachedRatings', {
+      method: 'POST',
+      body: JSON.stringify({})
+    }, PROFESSOR_RATINGS_BASE_URL)
+  }
+
+  static async clearCache(): Promise<{ success: boolean; deletedCount: number }> {
+    return apiRequest<{ success: boolean; deletedCount: number }>('clearCache', {
+      method: 'POST',
+      body: JSON.stringify({})
+    }, PROFESSOR_RATINGS_BASE_URL)
   }
 }
 

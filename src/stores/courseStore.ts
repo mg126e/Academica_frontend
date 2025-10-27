@@ -86,6 +86,17 @@ export const useCourseStore = defineStore('course', () => {
     return courses.value.filter(course => course.department === department)
   }
 
+  const searchCourses = (query: string) => {
+    if (!query.trim()) return courses.value
+    
+    const searchTerm = query.toLowerCase().trim()
+    return courses.value.filter(course => 
+      course.id.toLowerCase().includes(searchTerm) ||
+      course.title.toLowerCase().includes(searchTerm) ||
+      course.department.toLowerCase().includes(searchTerm)
+    )
+  }
+
   return {
     // State
     courses,
@@ -100,6 +111,7 @@ export const useCourseStore = defineStore('course', () => {
     createCourse,
     getCourseById,
     getCoursesByDepartment,
+    searchCourses,
     setError,
     clearError
   }

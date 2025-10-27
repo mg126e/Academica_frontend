@@ -96,11 +96,10 @@
                 />
               </div>
               <div class="form-group">
-                <label>Location:</label>
+                <label>Location (optional):</label>
                 <input
                   v-model="timeSlot.location"
                   type="text"
-                  required
                   placeholder="e.g., Room 101"
                 />
               </div>
@@ -173,7 +172,7 @@
               >
                 <span class="days">{{ timeSlot.days.join(', ') }}</span>
                 <span class="time">{{ timeSlot.startTime }} - {{ timeSlot.endTime }}</span>
-                <span class="location">{{ timeSlot.location }}</span>
+                <span v-if="timeSlot.location" class="location">{{ timeSlot.location }}</span>
               </div>
             </div>
           </div>

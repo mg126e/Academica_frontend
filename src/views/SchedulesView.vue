@@ -45,20 +45,19 @@
 
     <!-- Schedules List -->
     <div v-else class="schedules-list">
-      <div v-if="scheduleStore.schedules.length === 0" class="empty-state">
+      <div v-if="scheduleStore.userSchedules.length === 0" class="empty-state">
         <p>No schedules found. Create your first schedule to get started!</p>
       </div>
       <div v-else>
-        <h2>All Schedules ({{ scheduleStore.scheduleCount }})</h2>
+        <h2>My Schedules ({{ scheduleStore.userSchedules.length }})</h2>
         <div class="schedules-grid">
           <div
-            v-for="schedule in scheduleStore.schedules"
+            v-for="schedule in scheduleStore.userSchedules"
             :key="schedule.id"
             class="schedule-card"
           >
             <div class="schedule-header">
               <h3>{{ schedule.name }}</h3>
-              <span class="owner">{{ schedule.owner }}</span>
             </div>
             <p class="section-count">{{ schedule.sectionIds.length }} sections</p>
             <div class="schedule-actions">
@@ -79,42 +78,6 @@
               >
                 Delete
               </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- User Schedules -->
-        <div v-if="scheduleStore.userSchedules.length > 0" class="user-schedules-section">
-          <h2>My Schedules ({{ scheduleStore.userSchedules.length }})</h2>
-          <div class="schedules-grid">
-            <div
-              v-for="schedule in scheduleStore.userSchedules"
-              :key="schedule.id"
-              class="schedule-card"
-            >
-              <div class="schedule-header">
-                <h3>{{ schedule.name }}</h3>
-              </div>
-              <p class="section-count">{{ schedule.sectionIds.length }} sections</p>
-              <div class="schedule-actions">
-                <RouterLink :to="`/schedule/${schedule.id}`" class="btn btn-primary btn-sm">
-                  View Details
-                </RouterLink>
-                <button
-                  @click="handleDuplicateSchedule(schedule)"
-                  class="btn btn-secondary btn-sm"
-                  :disabled="scheduleStore.loading"
-                >
-                  Duplicate
-                </button>
-                <button
-                  @click="handleDeleteSchedule(schedule)"
-                  class="btn btn-danger btn-sm"
-                  :disabled="scheduleStore.loading"
-                >
-                  Delete
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -417,16 +380,7 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.user-schedules-section {
-  margin-top: 3rem;
-}
-
-.user-schedules-section h2 {
-  color: #495057;
-  border-bottom: 2px solid #007bff;
-  padding-bottom: 0.5rem;
-  margin-bottom: 1rem;
-}
+/* Removed user-schedules-section styles since we now only show user schedules */
 
 /* Modal Styles */
 .modal-overlay {
