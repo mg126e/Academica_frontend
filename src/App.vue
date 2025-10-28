@@ -29,7 +29,7 @@
       <div v-else class="auth-container">
         <div class="auth-card">
           <h1 class="auth-title">Welcome to Academica</h1>
-          <p class="auth-subtitle">Please login or register to access the application</p>
+          <p class="auth-subtitle">Please login or register</p>
           
           <div class="auth-buttons">
             <button @click="goToLogin" class="btn btn-primary btn-large">Login</button>
@@ -86,6 +86,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Caladea:wght@400;700&display=swap');
+
 nav {
   padding: 1rem 2rem;
   background-color: #f8f9fa;
@@ -97,24 +99,27 @@ nav {
 }
 
 .nav-brand {
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .brand-link {
-  font-size: 1.5rem;
+  font-size: 2.25rem;
   font-weight: bold;
   color: #2c3e50;
   text-decoration: none;
+  font-family: 'Caladea', serif;
 }
 
 .nav-links {
-  flex: 2;
+  flex: 1;
   display: flex;
   gap: 2rem;
+  justify-content: center;
+  margin-left: -500px;
 }
 
 .nav-auth {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   gap: 1rem;
   align-items: center;
@@ -126,15 +131,19 @@ nav a {
   color: #495057;
   font-weight: 500;
   transition: color 0.2s;
+  font-family: 'Caladea', serif;
+  font-size: 1.5rem;
 }
 
 nav a:hover {
-  color: #007bff;
+  color: #6D88D3;
 }
 
 .user-info {
   color: #495057;
   font-weight: 500;
+  font-family: 'Caladea', serif;
+  font-size: 1.5rem;
 }
 
 .btn {
@@ -146,31 +155,35 @@ nav a:hover {
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
-  transition: all 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 .btn-primary {
-  background-color: #007bff;
+  background-color: #6D88D3;
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #0056b3;
+  background-color: #5a73ba;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(109, 136, 211, 0.4);
 }
 
 .btn-outline {
-  background-color: transparent;
-  color: #007bff;
-  border: 1px solid #007bff;
+  background-color: #CBDEF8;
+  color: #41484e;
+  border: 1px solid #A3C4F3;
 }
 
 .btn-outline:hover {
-  background-color: #007bff;
-  color: white;
+  background-color: #8bb3ed;
+  color: #41484e;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(163, 196, 243, 0.4);
 }
 
 main {
-  padding: 1rem;
+  padding: 0;
 }
 
 .auth-container {
@@ -178,7 +191,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #A3C4F3 0%, #FFCFD2 100%);
   padding: 20px;
 }
 
@@ -197,6 +210,7 @@ main {
   margin-bottom: 16px;
   font-size: 32px;
   font-weight: 600;
+  font-family: 'Caladea', serif;
 }
 
 .auth-subtitle {

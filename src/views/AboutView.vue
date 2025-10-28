@@ -34,6 +34,8 @@
 
 <style scoped>
 .about {
+  min-height: 100vh;
+  background: white;
   padding: 2rem;
   max-width: 800px;
   margin: 0 auto;
@@ -64,7 +66,7 @@ h1 {
 
 .tech-item h3 {
   margin: 0 0 0.5rem 0;
-  color: #007bff;
+  color: #6D88D3;
 }
 
 .tech-item p {

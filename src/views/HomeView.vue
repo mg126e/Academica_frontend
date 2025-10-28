@@ -2,29 +2,38 @@
   <div class="home">
     <!-- Header with Schedule Selector -->
     <div class="header">
-      <h1>My Course Schedule</h1>
       <div class="schedule-controls">
         <div class="schedule-selector">
           <label for="scheduleSelect">Current Schedule:</label>
-          <select 
-            id="scheduleSelect" 
-            v-model="selectedScheduleId" 
-            @change="onScheduleChange"
-            class="schedule-dropdown"
-          >
-            <option value="">Select a schedule</option>
-            <option 
-              v-for="schedule in userSchedules" 
-              :key="schedule.id" 
-              :value="schedule.id"
+          <div class="custom-dropdown-wrapper">
+            <select 
+              id="scheduleSelect" 
+              v-model="selectedScheduleId" 
+              @change="onScheduleChange"
+              class="schedule-dropdown"
             >
-              {{ schedule.name }}
-            </option>
-          </select>
+              <option value="">Select a schedule</option>
+              <option 
+                v-for="schedule in userSchedules" 
+                :key="schedule.id" 
+                :value="schedule.id"
+              >
+                {{ schedule.name }}
+              </option>
+            </select>
+            <button
+              v-if="selectedScheduleId"
+              @click.stop="confirmDeleteSchedule(selectedScheduleId)"
+              class="delete-schedule-btn"
+              title="Delete this schedule"
+            >
+              ×
+            </button>
+          </div>
         </div>
         <div class="schedule-actions">
           <button @click="showNewScheduleModal = true" class="btn btn-primary">
-            + New Schedule
+            New Schedule
           </button>
           <button 
             @click="showDuplicateScheduleModal = true" 
@@ -32,17 +41,19 @@
             :disabled="!selectedScheduleId"
             :title="selectedScheduleId ? 'Duplicate current schedule' : 'Select a schedule first'"
           >
-            📋 Duplicate
-          </button>
-          <button 
-            @click="exportToGoogleCalendar" 
-            class="btn btn-success"
-            :disabled="!selectedScheduleId || !currentSchedule || currentSchedule.sectionIds.length === 0"
-            :title="!selectedScheduleId || !currentSchedule || currentSchedule.sectionIds.length === 0 ? 'Add sections to your schedule first' : 'Export to Google Calendar'"
-          >
-            📅 Export to Google Calendar
+            Duplicate
           </button>
         </div>
+      </div>
+      <div class="export-action">
+        <button 
+          @click="exportToGoogleCalendar" 
+          class="btn btn-success"
+          :disabled="!selectedScheduleId || !currentSchedule || currentSchedule.sectionIds.length === 0"
+          :title="!selectedScheduleId || !currentSchedule || currentSchedule.sectionIds.length === 0 ? 'Add sections to your schedule first' : 'Export to Google Calendar'"
+        >
+          Export to Google Calendar
+        </button>
       </div>
     </div>
 
@@ -51,7 +62,9 @@
       <!-- Section Search Sidebar -->
       <div class="course-search-sidebar">
         <div class="search-header">
-          <h3>Available Sections</h3>
+          <button @click="showCreateSectionModal = true" class="btn-create-section">
+            New Section
+          </button>
           <div class="search-controls">
             <input
               v-model="sectionSearchQuery"
@@ -105,7 +118,7 @@
                     v-model="selectedDistributions"
                     class="checkbox-input"
                   />
-                  <span class="checkbox-text">{{ dist }}</span>
+                  <span class="checkbox-text">{{ getDistributionDisplayName(dist) }}</span>
                 </label>
               </div>
               <small v-if="filteringStore.filteredCourses.length === 0" class="filter-note">
@@ -135,7 +148,7 @@
               :disabled="!currentSchedule || currentSchedule.sectionIds.length === 0"
               :title="!currentSchedule || currentSchedule.sectionIds.length === 0 ? 'Add sections to your schedule first' : 'Get AI suggestions based on a course in your schedule'"
             >
-              🤖 Get AI Course Suggestions
+              Get AI Course Suggestions
             </button>
             
             <div v-if="aiSuggestedCourses.length > 0" class="suggested-courses">
@@ -183,7 +196,7 @@
               <button @click="selectedProfessor = ''" class="remove-filter">×</button>
             </span>
             <span v-for="dist in selectedDistributions" :key="dist" class="filter-tag">
-              Dist: {{ dist }}
+              Dist: {{ getDistributionDisplayName(dist) }}
               <button @click="removeDistribution(dist)" class="remove-filter">×</button>
             </span>
             <span v-if="selectedTimeFilter" class="filter-tag">
@@ -220,7 +233,7 @@
                   <span class="time-info">{{ getTimeSlotSummary(section) }}</span>
                 </div>
                 <div v-if="getSectionDistribution(section.id)" class="distribution-info">
-                  <span class="distribution-badge-small">{{ getSectionDistribution(section.id) }}</span>
+                  <span class="distribution-badge-small">{{ getDistributionDisplayName(getSectionDistribution(section.id)) }}</span>
                 </div>
               </div>
               <button
@@ -308,7 +321,7 @@
             </div>
             <div class="info-item" v-if="getSectionDistribution(selectedCourse.sectionId)">
               <label>Distribution:</label>
-              <span class="distribution-badge">{{ getSectionDistribution(selectedCourse.sectionId) }}</span>
+              <span class="distribution-badge">{{ getDistributionDisplayName(getSectionDistribution(selectedCourse.sectionId)) }}</span>
             </div>
             <div class="info-item" v-if="selectedCourse.description">
               <label>Description:</label>
@@ -451,7 +464,7 @@
     <div v-if="showAISuggestionModal" class="modal-overlay" @click="closeAISuggestionModal">
       <div class="modal ai-modal" @click.stop>
         <div class="modal-header">
-          <h3>🤖 Choose a Course for AI Suggestions</h3>
+          <h3>Choose a Course for AI Suggestions</h3>
           <button @click="closeAISuggestionModal" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
@@ -523,6 +536,147 @@
         </div>
       </div>
     </div>
+    <!-- Create Section Modal -->
+    <div v-if="showCreateSectionModal" class="modal-overlay" @click="closeCreateSectionModal">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>Create New Section</h3>
+          <button @click="closeCreateSectionModal" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="handleCreateSection">
+            <div class="form-group">
+              <label for="newSectionCourse">Course:</label>
+              <select
+                id="newSectionCourse"
+                v-model="newSection.courseId"
+                required
+                class="form-input"
+              >
+                <option value="">Select a course</option>
+                <option v-for="course in courseStore.courses" :key="course.id" :value="course.id">
+                  {{ course.id }} - {{ course.title }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="newSectionNumber">Section Number:</label>
+              <input
+                id="newSectionNumber"
+                v-model="newSection.sectionNumber"
+                type="text"
+                required
+                placeholder="e.g., 01, A, B"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newSectionInstructor">Instructor:</label>
+              <input
+                id="newSectionInstructor"
+                v-model="newSection.instructor"
+                type="text"
+                required
+                placeholder="Professor name"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newSectionCapacity">Capacity:</label>
+              <input
+                id="newSectionCapacity"
+                v-model.number="newSection.capacity"
+                type="number"
+                required
+                min="1"
+                placeholder="e.g., 30"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Time Slots:</label>
+              <div v-for="(timeSlot, index) in newSection.timeSlots" :key="index" class="time-slot-group">
+                <div class="time-slot-header">
+                  <h4>Time Slot {{ index + 1 }}</h4>
+                  <button
+                    v-if="newSection.timeSlots.length > 1"
+                    type="button"
+                    @click="removeTimeSlot(index)"
+                    class="btn-remove-slot"
+                  >
+                    Remove
+                  </button>
+                </div>
+                
+                <div class="form-group">
+                  <label>Days:</label>
+                  <div class="days-checkboxes">
+                    <label v-for="day in daysOfWeek" :key="day" class="checkbox-label">
+                      <input
+                        type="checkbox"
+                        :value="day"
+                        v-model="timeSlot.days"
+                        class="checkbox-input"
+                      />
+                      <span>{{ day }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Start Time:</label>
+                    <input
+                      v-model="timeSlot.startTime"
+                      type="time"
+                      required
+                      class="form-input"
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <label>End Time:</label>
+                    <input
+                      v-model="timeSlot.endTime"
+                      type="time"
+                      required
+                      class="form-input"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>Location:</label>
+                  <input
+                    v-model="timeSlot.location"
+                    type="text"
+                    placeholder="e.g., Room 101, Building A"
+                    class="form-input"
+                  />
+                </div>
+              </div>
+
+              <button type="button" @click="addTimeSlot" class="btn-add-slot">
+                + Add Time Slot
+              </button>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" :disabled="loading">
+                {{ loading ? 'Creating...' : 'Create Section' }}
+              </button>
+              <button type="button" @click="closeCreateSectionModal" class="btn btn-secondary">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -570,6 +724,24 @@ const selectedTimeFilter = ref('')
 const showAdvancedFilters = ref(false)
 const selectedSectionForDetails = ref<Section | null>(null)
 const hoveredSection = ref<Section | null>(null)
+
+// Create Section Modal
+const showCreateSectionModal = ref(false)
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const newSection = ref({
+  courseId: '',
+  sectionNumber: '',
+  instructor: '',
+  capacity: 0,
+  timeSlots: [
+    {
+      days: [] as string[],
+      startTime: '',
+      endTime: '',
+      location: ''
+    }
+  ]
+})
 const showConflictModal = ref(false)
 const conflictingSections = ref<any[]>([])
 const sectionToAdd = ref<Section | null>(null)
@@ -580,7 +752,8 @@ const timeSlots = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
   '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
   '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-  '17:00', '17:30', '18:00'
+  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
+  '20:00', '20:30', '21:00', '21:30', '22:00'
 ]
 
 // Helper to convert day names to abbreviations used by calendar
@@ -711,6 +884,29 @@ const professors = computed(() => {
   return Array.from(profs).sort()
 })
 
+// Map distribution abbreviations to full names for display
+const getDistributionDisplayName = (abbr: string): string => {
+  const distributionMap: Record<string, string> = {
+    'SBA': 'Social and Behavioral Analysis',
+    'MM': 'Mathematical Modeling and Problem Solving',
+    'ARS': 'Arts, Music, Theatre, Film, and Video',
+    'LL': 'Language and Literature',
+    'HS': 'Historical Studies',
+    'NPS': 'Natural and Physical Science',
+    'EC': 'Epistemology and Cognition',
+    'REP': 'Religion, Ethics, and Moral Philosophy'
+  }
+  
+  // Handle comma-separated values
+  if (abbr.includes(',')) {
+    return abbr.split(',')
+      .map(a => distributionMap[a.trim()] || a.trim())
+      .join(', ')
+  }
+  
+  return distributionMap[abbr] || abbr
+}
+
 const distributions = computed(() => {
   // Get unique distribution requirements from all available sources
   const distros = new Set<string>()
@@ -722,7 +918,8 @@ const distributions = computed(() => {
     // Split by comma and clean each part
     distStr.split(',').forEach(dist => {
       const cleaned = dist.trim()
-      if (cleaned) {
+      // Filter out empty strings, "null", "undefined", and "N/A"
+      if (cleaned && cleaned.toLowerCase() !== 'null' && cleaned.toLowerCase() !== 'undefined' && cleaned.toLowerCase() !== 'n/a') {
         distros.add(cleaned)
       }
     })
@@ -779,7 +976,7 @@ const timeFilters = [
   { value: '', label: 'Any Time' },
   { value: 'morning', label: 'Morning (8:00-12:00)' },
   { value: 'afternoon', label: 'Afternoon (12:00-17:00)' },
-  { value: 'evening', label: 'Evening (17:00+)' }
+  { value: 'evening', label: 'Evening (17:00-22:00)' }
 ]
 
 const filteredSections = computed(() => {
@@ -846,7 +1043,7 @@ const filteredSections = computed(() => {
           case 'afternoon':
             return startHour >= 12 && startHour < 17
           case 'evening':
-            return startHour >= 17
+            return startHour >= 17 && startHour <= 22
           default:
             return true
         }
@@ -902,6 +1099,28 @@ const getCoursesForTimeSlot = (day: string, time: string) => {
 
 const onScheduleChange = () => {
   // Schedule change is handled by the computed properties
+}
+
+const confirmDeleteSchedule = async (scheduleId: string) => {
+  const schedule = scheduleStore.getScheduleById(scheduleId)
+  if (!schedule) return
+  
+  const confirmed = confirm(`Are you sure you want to delete "${schedule.name}"? This action cannot be undone.`)
+  if (!confirmed) return
+  
+  try {
+    await scheduleStore.deleteSchedule(scheduleId)
+    
+    // If the deleted schedule was selected, clear selection
+    if (selectedScheduleId.value === scheduleId) {
+      selectedScheduleId.value = ''
+    }
+    
+    alert('Schedule deleted successfully!')
+  } catch (error) {
+    console.error('Error deleting schedule:', error)
+    alert('Failed to delete schedule. Please try again.')
+  }
 }
 
 const showCourseDetails = async (course: any) => {
@@ -1045,6 +1264,63 @@ const duplicateCurrentSchedule = async () => {
 const closeDuplicateScheduleModal = () => {
   showDuplicateScheduleModal.value = false
   duplicateScheduleName.value = ''
+}
+
+// Create Section Modal functions
+const closeCreateSectionModal = () => {
+  showCreateSectionModal.value = false
+  resetSectionForm()
+}
+
+const resetSectionForm = () => {
+  newSection.value = {
+    courseId: '',
+    sectionNumber: '',
+    instructor: '',
+    capacity: 0,
+    timeSlots: [
+      {
+        days: [],
+        startTime: '',
+        endTime: '',
+        location: ''
+      }
+    ]
+  }
+}
+
+const addTimeSlot = () => {
+  newSection.value.timeSlots.push({
+    days: [],
+    startTime: '',
+    endTime: '',
+    location: ''
+  })
+}
+
+const removeTimeSlot = (index: number) => {
+  newSection.value.timeSlots.splice(index, 1)
+}
+
+const handleCreateSection = async () => {
+  try {
+    loading.value = true
+    await sectionStore.createSection({
+      courseId: newSection.value.courseId,
+      sectionNumber: newSection.value.sectionNumber,
+      instructor: newSection.value.instructor,
+      capacity: newSection.value.capacity,
+      timeSlots: newSection.value.timeSlots
+    })
+    
+    alert('Section created successfully!')
+    closeCreateSectionModal()
+  } catch (error) {
+    console.error('Error creating section:', error)
+    alert('Failed to create section. Please try again.')
+  } finally {
+    loading.value = false
+  }
 }
 
 // Section search methods
@@ -1216,18 +1492,28 @@ const exportToGoogleCalendar = () => {
     return
   }
 
-  const exportCount = currentSchedule.value.sectionIds.length
+  // Count total time slots across all sections
+  let totalTimeSlots = 0
+  currentSchedule.value.sectionIds.forEach((sectionId) => {
+    const section = sectionStore.getSectionById(sectionId)
+    if (section) {
+      totalTimeSlots += section.timeSlots.length
+    }
+  })
+  
   const confirmExport = confirm(
-    `This will open ${exportCount} Google Calendar tab${exportCount > 1 ? 's' : ''} to add your course${exportCount > 1 ? 's' : ''}.\n\n` +
+    `This will open ${totalTimeSlots} Google Calendar tab${totalTimeSlots > 1 ? 's' : ''} to add your course${totalTimeSlots > 1 ? 's' : ''}.\n\n` +
     'Each course will need to be saved individually in Google Calendar.\n\n' +
+    'If tabs don\'t open, please disable your popup blocker for this site.\n\n' +
     'Continue?'
   )
 
   if (!confirmExport) return
 
   let successCount = 0
+  let tabIndex = 0
   
-  currentSchedule.value.sectionIds.forEach((sectionId, index) => {
+  currentSchedule.value.sectionIds.forEach((sectionId) => {
     const section = sectionStore.getSectionById(sectionId)
     if (!section) return
 
@@ -1238,11 +1524,19 @@ const exportToGoogleCalendar = () => {
     section.timeSlots.forEach(timeSlot => {
       const calendarUrl = generateGoogleCalendarUrl(section, course, timeSlot)
       
+      // Skip if URL generation failed due to invalid dates
+      if (!calendarUrl) {
+        console.warn('Skipping time slot due to invalid dates:', timeSlot)
+        return
+      }
+      
       // Add a small delay between opening tabs to avoid popup blockers
+      // Use tabIndex to ensure each tab opens at a different time
       setTimeout(() => {
         window.open(calendarUrl, '_blank')
-      }, index * 500)
+      }, tabIndex * 500)
       
+      tabIndex++
       successCount++
     })
   })
@@ -1250,9 +1544,10 @@ const exportToGoogleCalendar = () => {
   setTimeout(() => {
     alert(
       `Opened ${successCount} Google Calendar window${successCount > 1 ? 's' : ''}.\n\n` +
-      'Please save each event in your Google Calendar.'
+      'Please save each event in your Google Calendar.\n\n' +
+      '💡 Tip: If not all tabs opened, check your popup blocker settings.'
     )
-  }, successCount * 500 + 500)
+  }, tabIndex * 500 + 500)
 }
 
 const generateGoogleCalendarUrl = (section: Section, course: Course, timeSlot: TimeSlot): string => {
@@ -1276,11 +1571,25 @@ const generateGoogleCalendarUrl = (section: Section, course: Course, timeSlot: T
   
   // Format dates for Google Calendar (YYYYMMDDTHHMMSS)
   const formatDateTime = (date: Date) => {
-    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+    const dateObj = new Date(date)
+    
+    // Check if date is valid
+    if (isNaN(dateObj.getTime())) {
+      console.error('Invalid date:', date)
+      return null
+    }
+    
+    return dateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
   }
   
   const startDate = formatDateTime(startDateTime)
   const endDate = formatDateTime(endDateTime)
+  
+  // Skip if either date is invalid
+  if (!startDate || !endDate) {
+    console.error('Skipping section with invalid dates:', section)
+    return ''
+  }
   
   // Create recurrence rule (weekly on specified days until end of semester)
   const semesterEnd = new Date('2025-05-15') // Spring 2025 example
@@ -1288,8 +1597,15 @@ const generateGoogleCalendarUrl = (section: Section, course: Course, timeSlot: T
   
   // Convert days to Google Calendar format (SU, MO, TU, WE, TH, FR, SA)
   const dayMap: Record<string, string> = {
+    // Full names
     'Sunday': 'SU', 'Monday': 'MO', 'Tuesday': 'TU', 'Wednesday': 'WE',
-    'Thursday': 'TH', 'Friday': 'FR', 'Saturday': 'SA'
+    'Thursday': 'TH', 'Friday': 'FR', 'Saturday': 'SA',
+    // Abbreviations
+    'Sun': 'SU', 'Mon': 'MO', 'Tue': 'TU', 'Wed': 'WE', 'Thu': 'TH', 'Fri': 'FR', 'Sat': 'SA',
+    // Single letters
+    'M': 'MO', 'T': 'TU', 'W': 'WE', 'R': 'TH', 'F': 'FR', 'S': 'SA', 'U': 'SU',
+    // Two-letter codes
+    'Tu': 'TU', 'Th': 'TH', 'Sa': 'SA', 'Su': 'SU'
   }
   const recurDays = timeSlot.days.map(day => dayMap[day] || day.substring(0, 2).toUpperCase()).join(',')
   const recurrence = `RRULE:FREQ=WEEKLY;BYDAY=${recurDays};UNTIL=${untilDate}`
@@ -1311,12 +1627,27 @@ const generateGoogleCalendarUrl = (section: Section, course: Course, timeSlot: T
 }
 
 const getNextDayOfWeek = (fromDate: Date, dayName: string): Date => {
+  // Comprehensive day mapping supporting full names, abbreviations, and single letters
   const dayMap: Record<string, number> = {
+    // Full names
     'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
-    'Thursday': 4, 'Friday': 5, 'Saturday': 6
+    'Thursday': 4, 'Friday': 5, 'Saturday': 6,
+    // Abbreviations
+    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6,
+    // Single letters
+    'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5, 'S': 6, 'U': 0,
+    // Two-letter codes
+    'Tu': 2, 'Th': 4, 'Sa': 6, 'Su': 0
   }
   
   const targetDay = dayMap[dayName]
+  
+  // Validate that we have a valid day
+  if (targetDay === undefined) {
+    console.error('Invalid day name:', dayName)
+    return new Date(NaN) // Return invalid date
+  }
+  
   const currentDay = fromDate.getDay()
   const daysUntilTarget = (targetDay - currentDay + 7) % 7
   
@@ -1613,9 +1944,9 @@ onMounted(async () => {
 
 <style scoped>
 .home {
+  min-height: 100vh;
+  background: white;
   padding: 0.25rem;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 /* Header Styles */
@@ -1660,8 +1991,13 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
+.export-action {
+  display: flex;
+  align-items: center;
+}
+
 .schedule-dropdown {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 35px 0.5rem 1rem;
   border: 1px solid #ced4da;
   border-radius: 4px;
   background: white;
@@ -1673,6 +2009,36 @@ onMounted(async () => {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.custom-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.delete-schedule-btn {
+  position: absolute;
+  right: 23px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  pointer-events: auto;
+}
+
+.delete-schedule-btn:hover {
+  color: #333;
 }
 
 /* Main Content Layout */
@@ -2029,14 +2395,14 @@ onMounted(async () => {
 }
 
 .distribution-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #A68BC7;
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 0.875rem;
   font-weight: 600;
   display: inline-block;
-  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 4px rgba(166, 139, 199, 0.3);
 }
 
 .distribution-info {
@@ -2044,14 +2410,15 @@ onMounted(async () => {
 }
 
 .distribution-badge-small {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: white;
+  color: #41484e;
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;
   display: inline-block;
-  box-shadow: 0 1px 2px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 1px 2px rgba(166, 139, 199, 0.2);
+  border: 1.5px solid #ac97c6ff;
 }
 
 /* Form Styles */
@@ -2093,7 +2460,7 @@ onMounted(async () => {
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
   text-decoration: none;
   display: inline-block;
   text-align: center;
@@ -2105,34 +2472,41 @@ onMounted(async () => {
 }
 
 .btn-primary {
-  background-color: #6D88D3;
-  color: white;
+  background-color: #CBDEF8;
+  color: #41484e;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #5a73ba;
+  background-color: #CBDEF8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(184, 165, 243, 0.4);
 }
 
 .btn-secondary {
-  background-color: #6D88D3;
-  color: white;
+  background-color: #CBDEF8;
+  color: #41484e;
 }
 
 .btn-secondary:hover {
-  background-color: #5a73ba;
+  background-color: #A3C4F3;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(184, 165, 243, 0.4);
 }
 
 .btn-success {
-  background-color: #6D88D3;
-  color: white;
+  background-color: #D7C6F2;
+  color: #41484e;
 }
 
 .btn-success:hover:not(:disabled) {
-  background-color: #5a73ba;
+  background-color: #B89BE8;
+  color: #41484e;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(163, 196, 243, 0.4);
 }
 
 .btn-success:disabled {
-  background-color: #a3b4db;
+  background-color: #D7C6F2;
   cursor: not-allowed;
   opacity: 0.65;
 }
@@ -2457,6 +2831,80 @@ onMounted(async () => {
   margin-top: 0.5rem;
 }
 
+/* Create Section Modal Styles */
+.time-slot-group {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  border: 1px solid #dee2e6;
+}
+
+.time-slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.time-slot-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #495057;
+}
+
+.btn-remove-slot {
+  padding: 0.25rem 0.75rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-remove-slot:hover {
+  background: #c82333;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.days-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.days-checkboxes .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.btn-add-slot {
+  padding: 0.5rem 1rem;
+  background: #90DBF4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 0.5rem;
+}
+
+.btn-add-slot:hover {
+  background: #7bc8e8;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .header {
@@ -2595,11 +3043,25 @@ onMounted(async () => {
   background: #f8f9fa;
 }
 
-.search-header h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.1rem;
+.btn-create-section {
+  padding: 0.5rem 1rem;
+  background: #CBDEF8;
+  color: #41484e;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #495057;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  white-space: nowrap;
+  margin-bottom: 1rem;
+  display: block;
+  width: 100%;
+}
+
+.btn-create-section:hover {
+  background: #A3C4F3;
+  transform: translateY(-1px);
 }
 
 .search-controls {
@@ -2625,8 +3087,8 @@ onMounted(async () => {
 
 .btn-advanced-filters {
   padding: 0.5rem 1rem;
-  background: #6D88D3;
-  color: white;
+  background: #CBDEF8;
+  color: #41484e;
   border: none;
   border-radius: 4px;
   font-size: 0.9rem;
@@ -2636,11 +3098,11 @@ onMounted(async () => {
 }
 
 .btn-advanced-filters:hover {
-  background: #5a73ba;
+  background: #A3C4F3;
 }
 
 .btn-advanced-filters.active {
-  background: #5a73ba;
+  background: #CBDEF8;
 }
 
 .advanced-filters {
@@ -2748,8 +3210,6 @@ onMounted(async () => {
 /* AI Suggestions */
 .ai-suggestions-section {
   margin-top: 1rem;
-  padding: 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 8px;
 }
 
@@ -2757,7 +3217,7 @@ onMounted(async () => {
   width: 100%;
   padding: 0.75rem;
   background: white;
-  color: #667eea;
+  color: #41484e;
   border: 2px solid white;
   border-radius: 6px;
   font-size: 1rem;
@@ -3018,7 +3478,7 @@ onMounted(async () => {
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.5rem;
-  background: #007bff;
+  background: #CFBAF0;
   color: white;
   border-radius: 12px;
   font-size: 0.8rem;
@@ -3147,7 +3607,7 @@ onMounted(async () => {
 
 .btn-add-course {
   padding: 0.375rem 0.75rem;
-  background: #007bff;
+  background: #81beffff;
   color: white;
   border: none;
   border-radius: 4px;

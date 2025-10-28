@@ -132,6 +132,8 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Caladea:wght@400;700&display=swap');
+
 .register-container {
   min-height: 100vh;
   display: flex;
@@ -156,6 +158,7 @@ const handleRegister = async () => {
   margin-bottom: 30px;
   font-size: 28px;
   font-weight: 600;
+  font-family: 'Caladea', serif;
 }
 
 .register-form {
