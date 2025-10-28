@@ -3218,7 +3218,7 @@ onMounted(async () => {
   padding: 0.75rem;
   background: white;
   color: #41484e;
-  border: 2px solid white;
+  border: 2px solid #d2e8ffff;
   border-radius: 6px;
   font-size: 1rem;
   font-weight: 600;
@@ -3249,7 +3249,7 @@ onMounted(async () => {
 }
 
 .suggested-courses h4 {
-  color: white;
+  color: #41484e;
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
@@ -3257,7 +3257,7 @@ onMounted(async () => {
 
 .btn-collapse-suggestions {
   background: rgba(255, 255, 255, 0.2);
-  color: white;
+  color: #41484e;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 4px;
   padding: 0.25rem 0.5rem;
@@ -3340,7 +3340,7 @@ onMounted(async () => {
 }
 
 .suggestion-context {
-  color: white;
+  color: #41484e;
   font-size: 0.8rem;
   margin: 0 0 0.5rem 0;
   font-style: italic;
