@@ -2395,7 +2395,7 @@ onMounted(async () => {
 }
 
 .distribution-badge {
-  background: #A68BC7;
+  background: #e5d1ffff;
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 20px;
