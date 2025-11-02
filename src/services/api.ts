@@ -62,6 +62,7 @@ const COURSE_FILTERING_BASE_URL = '/api/CourseFiltering'
 const USER_AUTH_BASE_URL = '/api/UserAuth'
 const SESSION_BASE_URL = '/api/Session'
 const PROFESSOR_RATINGS_BASE_URL = '/api/ProfessorRatings'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
 class ApiServiceError extends Error {
   constructor(message: string) {
