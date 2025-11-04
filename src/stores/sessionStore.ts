@@ -186,6 +186,7 @@ export const useSessionStore = defineStore('session', () => {
     checkSessionValidity,
     initializeSession,
     setSession,
+    setSessionId,
     setError,
     clearError,
     clearSessionError
