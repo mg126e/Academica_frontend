@@ -62,7 +62,9 @@ const COURSE_FILTERING_BASE_URL = '/api/CourseFiltering'
 const USER_AUTH_BASE_URL = '/api/UserAuth'
 const SESSION_BASE_URL = '/api/Session'
 const PROFESSOR_RATINGS_BASE_URL = '/api/ProfessorRatings'
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
+// Safe access without relying on Vite's ambient types
+const API_BASE =
+  ((import.meta as unknown as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL) || '/api'
 
 class ApiServiceError extends Error {
   constructor(message: string) {
@@ -100,7 +102,7 @@ async function apiRequest<T>(
       console.error(`Request body:`, options.body)
       
       // Try to parse error response as JSON
-      let errorDetails = null
+      let errorDetails: { message?: string } | null = null
       try {
         errorDetails = JSON.parse(errorText)
         console.error('Parsed error details:', errorDetails)

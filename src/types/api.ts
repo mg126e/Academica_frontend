@@ -218,7 +218,7 @@ export interface AuthenticateRequest {
 }
 
 export interface AuthenticateResponse {
-  user: string
+  session: string
 }
 
 // Session Request/Response Types

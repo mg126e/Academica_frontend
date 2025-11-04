@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User, RegisterRequest, AuthenticateRequest, ConfirmRequest } from '../types/api'
 import { UserAuthApi, ApiServiceError } from '../services/api'
+import { useSessionStore } from './sessionStore'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -90,17 +91,29 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await UserAuthApi.authenticate(request)
       
-      // The API only returns a user ID, not a token
-      // We'll use the user ID as a "token" for authentication purposes
-      setToken(response.user)
+      // The API returns a session ID, use it for authentication
+      const sessionStore = useSessionStore()
+      sessionStore.setSessionId(response.session)
       
-      // Create a basic user object
+      // Use the session ID as the token for authentication tracking
+      setToken(response.session)
+      
+      // Create a basic user object (we don't have user ID from response anymore)
+      // We'll use the session ID as a temporary identifier
       setUser({
-        _id: response.user,
+        _id: response.session, // Temporary: use session ID as identifier
         username: request.username,
         email: '', // We don't have email from authenticate response
         confirmed: true // Assume confirmed if authentication succeeds
       })
+      
+      // Set a basic session object in the session store
+      sessionStore.setSession({
+        _id: response.session,
+        userID: '', // We don't have user ID from response
+        expiryTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+      })
+      
       return response
     } catch (err) {
       const errorMessage = err instanceof ApiServiceError ? err.message : 'Failed to authenticate user'

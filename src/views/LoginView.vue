@@ -58,11 +58,9 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
-import { useSessionStore } from '../stores/sessionStore'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const sessionStore = useSessionStore()
 
 const loginForm = reactive({
   username: '',
@@ -82,10 +80,8 @@ const handleLogin = async () => {
       password: loginForm.password
     })
 
-    // Start a session for the authenticated user
-    if (authStore.user) {
-      await sessionStore.startSession(authStore.user._id)
-    }
+    // Session ID is already set by authStore.authenticate from the response
+    // No need to call startSession separately
 
     // Redirect to home page
     router.push('/')
