@@ -67,33 +67,47 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   const endSession = async () => {
-    if (!sessionId.value) return
+    const currentSessionId = sessionId.value
+    if (!currentSessionId) {
+      // Already no session, clear anyway
+      setSession(null)
+      setSessionId(null)
+      return
+    }
 
     loading.value = true
     clearError()
     try {
-      const request: EndSessionRequest = { s: sessionId.value }
+      const request: EndSessionRequest = { s: currentSessionId }
       const response = await SessionApi.endSession(request)
+      // Clear session on success
       setSession(null)
       setSessionId(null)
       return response
     } catch (err) {
+      // Even if API call fails (timeout, network error, etc.), 
+      // clear the local session so user can still logout
+      setSession(null)
+      setSessionId(null)
+      
       const errorMessage = err instanceof ApiServiceError ? err.message : 'Failed to end session'
       setError(errorMessage)
-      console.error('Error ending session:', err)
-      throw err
+      console.error('Error ending session (local session cleared anyway):', err)
+      // Don't throw - we've cleared the session locally, so logout should succeed
+      // The error is logged for debugging but doesn't prevent logout
     } finally {
       loading.value = false
     }
   }
 
   const useSession = async () => {
-    if (!sessionId.value) return false
+    const currentSessionId = sessionId.value
+    if (!currentSessionId) return false
 
     loading.value = true
     clearError()
     try {
-      const request: UseSessionRequest = { s: sessionId.value }
+      const request: UseSessionRequest = { s: currentSessionId }
       const response = await SessionApi.useSession(request)
       return response.success
     } catch (err) {
@@ -107,12 +121,13 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   const extendSession = async () => {
-    if (!sessionId.value) return
+    const currentSessionId = sessionId.value
+    if (!currentSessionId) return
 
     loading.value = true
     clearError()
     try {
-      const request: ExtendSessionRequest = { s: sessionId.value }
+      const request: ExtendSessionRequest = { s: currentSessionId }
       const response = await SessionApi.extendSession(request)
       setSessionId(response.session)
       // Update the session object with new expiry time
@@ -148,7 +163,8 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   const checkSessionValidity = async () => {
-    if (!sessionId.value) return false
+    const currentSessionId = sessionId.value
+    if (!currentSessionId) return false
 
     try {
       const isValid = await useSession()

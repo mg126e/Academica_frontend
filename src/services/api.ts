@@ -57,14 +57,16 @@ import type {
   RefreshRatingResponse
 } from '../types/api'
 
-const API_BASE_URL = '/api/CourseScheduling'
-const COURSE_FILTERING_BASE_URL = '/api/CourseFiltering'
-const USER_AUTH_BASE_URL = '/api/UserAuth'
-const SESSION_BASE_URL = '/api/Session'
-const PROFESSOR_RATINGS_BASE_URL = '/api/ProfessorRatings'
 // Safe access without relying on Vite's ambient types
 const API_BASE =
   ((import.meta as unknown as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL) || '/api'
+
+// Construct full API URLs using the base URL
+const API_BASE_URL = `${API_BASE}/CourseScheduling`
+const COURSE_FILTERING_BASE_URL = `${API_BASE}/CourseFiltering`
+const USER_AUTH_BASE_URL = `${API_BASE}/UserAuth`
+const SESSION_BASE_URL = `${API_BASE}/Session`
+const PROFESSOR_RATINGS_BASE_URL = `${API_BASE}/ProfessorRatings`
 
 class ApiServiceError extends Error {
   constructor(message: string) {
@@ -130,8 +132,17 @@ async function apiRequest<T>(
         case 500:
           errorMessage = errorDetails?.message || 'Internal server error. Please try again later.'
           break
+        case 502:
+          errorMessage = 'Server error. The backend service is temporarily unavailable. Please try again later.'
+          break
+        case 503:
+          errorMessage = 'Service temporarily unavailable. The server is overloaded or under maintenance. Please try again later.'
+          break
+        case 504:
+          errorMessage = errorDetails?.message || 'Request timed out. The server took too long to respond. Please try again later.'
+          break
         default:
-          errorMessage = `HTTP error! status: ${response.status} - ${errorText}`
+          errorMessage = `HTTP error! status: ${response.status} - ${errorDetails?.message || errorText}`
       }
       
       throw new ApiServiceError(errorMessage)
