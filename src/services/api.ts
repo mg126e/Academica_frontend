@@ -87,7 +87,12 @@ async function apiRequest<T>(
   }
 
   console.log(`Making API request to: ${url}`)
-  console.log(`Request options:`, { ...defaultOptions, ...options })
+  // Sanitized: don't log request body as it may contain credentials
+  const sanitizedOptions = { ...defaultOptions, ...options }
+  if (sanitizedOptions.body) {
+    sanitizedOptions.body = '[REDACTED]'
+  }
+  console.log(`Request options:`, sanitizedOptions)
   
   try {
     const response = await fetch(url, { ...defaultOptions, ...options })
@@ -99,7 +104,7 @@ async function apiRequest<T>(
       const errorText = await response.text()
       console.error(`API Error for ${url}:`, errorText)
       console.error(`Response status: ${response.status}`)
-      console.error(`Request body:`, options.body)
+      // Sanitized: don't log request body as it may contain credentials
       
       // Try to parse error response as JSON
       let errorDetails: { message?: string } | null = null
