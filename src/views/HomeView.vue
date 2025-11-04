@@ -233,7 +233,7 @@
                   <span class="time-info">{{ getTimeSlotSummary(section) }}</span>
                 </div>
                 <div v-if="getSectionDistribution(section.id)" class="distribution-info">
-                  <span class="distribution-badge-small">{{ getDistributionDisplayName(getSectionDistribution(section.id)) }}</span>
+                  <span class="distribution-badge-small">{{ getDistributionDisplayName(getSectionDistribution(section.id) || '') }}</span>
                 </div>
               </div>
               <button
@@ -321,7 +321,7 @@
             </div>
             <div class="info-item" v-if="getSectionDistribution(selectedCourse.sectionId)">
               <label>Distribution:</label>
-              <span class="distribution-badge">{{ getDistributionDisplayName(getSectionDistribution(selectedCourse.sectionId)) }}</span>
+              <span class="distribution-badge">{{ getDistributionDisplayName(getSectionDistribution(selectedCourse.sectionId) || '') }}</span>
             </div>
             <div class="info-item" v-if="selectedCourse.description">
               <label>Description:</label>
