@@ -1914,30 +1914,36 @@ watch(selectedScheduleId, (newId) => {
 
 // Initialize data
 onMounted(async () => {
+  // Load essential data in parallel, but allow each to fail independently
+  // This ensures the app works even if one API times out
+  const loadPromises = [
+    scheduleStore.fetchAllSchedules().catch(err => {
+      console.warn('⚠️ Failed to load schedules (app will still work):', err)
+    }),
+    sectionStore.fetchAllSections().catch(err => {
+      console.error('Error loading sections:', err)
+    }),
+    courseStore.fetchAllCourses().catch(err => {
+      console.error('Error loading courses:', err)
+    })
+  ]
+  
+  // Wait for all, but don't fail if one times out
+  await Promise.allSettled(loadPromises)
+  
+  // Try to load filtering data, but don't fail if unavailable
   try {
-    // Load essential data first
     await Promise.all([
-      scheduleStore.fetchAllSchedules(),
-      sectionStore.fetchAllSections(),
-      courseStore.fetchAllCourses()
+      filteringStore.fetchFilteredCourses(),
+      filteringStore.fetchActiveTags()
     ])
-    
-    // Try to load filtering data, but don't fail if unavailable
-    try {
-      await Promise.all([
-        filteringStore.fetchFilteredCourses(),
-        filteringStore.fetchActiveTags()
-      ])
-    } catch (filteringError) {
-      console.info('ℹ️ CourseFiltering API not available - distribution features will be limited')
-    }
-    
-    // Select the first schedule if available
-    if (userSchedules.value.length > 0) {
-      selectedScheduleId.value = userSchedules.value[0].id
-    }
-  } catch (error) {
-    console.error('Error loading data:', error)
+  } catch (filteringError) {
+    console.info('ℹ️ CourseFiltering API not available - distribution features will be limited')
+  }
+  
+  // Select the first schedule if available (may be empty if fetch failed)
+  if (userSchedules.value.length > 0) {
+    selectedScheduleId.value = userSchedules.value[0].id
   }
 })
 </script>
