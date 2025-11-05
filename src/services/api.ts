@@ -82,9 +82,13 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${baseUrl}/${endpoint}`
   
+  // Get session ID from localStorage if available
+  const sessionId = localStorage.getItem('session_id')
+  
   const defaultOptions: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
+      ...(sessionId ? { 'X-Session-ID': sessionId } : {}),
     },
   }
 
