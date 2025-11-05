@@ -1247,6 +1247,11 @@ const duplicateCurrentSchedule = async () => {
     )
     console.log('Schedule duplicated successfully:', newSchedule)
     
+    // Validate that we got a schedule back
+    if (!newSchedule || !newSchedule.id) {
+      throw new Error('Failed to duplicate schedule: invalid response')
+    }
+    
     // Select the newly duplicated schedule
     selectedScheduleId.value = newSchedule.id
     closeDuplicateScheduleModal()

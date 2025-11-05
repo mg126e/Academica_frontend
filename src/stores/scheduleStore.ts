@@ -26,7 +26,10 @@ export const useScheduleStore = defineStore('schedule', () => {
     if (!Array.isArray(schedules.value)) {
       return []
     }
-    return schedules.value.filter(schedule => schedule.owner === currentUserId.value)
+    // Filter out any undefined/null schedules and then filter by owner
+    return schedules.value
+      .filter(schedule => schedule != null && typeof schedule === 'object')
+      .filter(schedule => schedule.owner === currentUserId.value)
   })
 
   // Actions
@@ -183,11 +186,19 @@ export const useScheduleStore = defineStore('schedule', () => {
         sourceScheduleId,
         newName
       })
+      
+      // Validate response
+      if (!response || !response.s) {
+        throw new Error('Invalid response from duplicateSchedule API: missing schedule')
+      }
+      
       // Ensure schedules.value is an array before pushing
       if (!Array.isArray(schedules.value)) {
         schedules.value = []
       }
+      
       schedules.value.push(response.s)
+      console.log('Schedule duplicated successfully:', response.s)
       return response.s
     } catch (err) {
       const errorMessage = err instanceof ApiServiceError ? err.message : 'Failed to duplicate schedule'
