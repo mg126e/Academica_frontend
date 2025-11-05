@@ -545,20 +545,47 @@
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleCreateSection">
+            <h4 class="form-section-title">Course Information</h4>
+            
             <div class="form-group">
-              <label for="newSectionCourse">Course:</label>
-              <select
-                id="newSectionCourse"
+              <label for="newCourseId">Course Number:</label>
+              <input
+                id="newCourseId"
                 v-model="newSection.courseId"
+                type="text"
                 required
+                placeholder="e.g., CS 101, MATH 241"
                 class="form-input"
-              >
-                <option value="">Select a course</option>
-                <option v-for="course in courseStore.courses" :key="course.id" :value="course.id">
-                  {{ course.id }} - {{ course.title }}
-                </option>
-              </select>
+              />
+              <small class="form-help-text">Department will be automatically extracted (e.g., CS from "CS 101")</small>
             </div>
+
+            <div class="form-group">
+              <label for="newCourseTitle">Course Name:</label>
+              <input
+                id="newCourseTitle"
+                v-model="newSection.courseTitle"
+                type="text"
+                required
+                placeholder="e.g., Introduction to Computer Science"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newCourseDepartment">Department:</label>
+              <input
+                id="newCourseDepartment"
+                v-model="newSection.department"
+                type="text"
+                required
+                placeholder="e.g., CS, MATH, ENGL"
+                class="form-input"
+              />
+              <small class="form-help-text">Auto-filled from course number, but can be edited</small>
+            </div>
+
+            <h4 class="form-section-title">Section Information</h4>
 
             <div class="form-group">
               <label for="newSectionNumber">Section Number:</label>
@@ -667,7 +694,7 @@
 
             <div class="form-actions">
               <button type="submit" class="btn btn-primary" :disabled="loading">
-                {{ loading ? 'Creating...' : 'Create Section' }}
+                {{ loading ? 'Creating...' : 'Create Course & Section' }}
               </button>
               <button type="button" @click="closeCreateSectionModal" class="btn btn-secondary">
                 Cancel
@@ -730,6 +757,8 @@ const showCreateSectionModal = ref(false)
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const newSection = ref({
   courseId: '',
+  courseTitle: '',
+  department: '',
   sectionNumber: '',
   instructor: '',
   capacity: 0,
@@ -741,6 +770,41 @@ const newSection = ref({
       location: ''
     }
   ]
+})
+
+// Helper function to extract department from course ID
+const extractDepartment = (courseId: string): string => {
+  if (!courseId || !courseId.trim()) return ''
+  const trimmed = courseId.trim()
+  // Extract department code (letters before first space, number, or dash)
+  // Examples: "CS 101" -> "CS", "MATH241" -> "MATH", "ENGL 101A" -> "ENGL", "CS-101" -> "CS"
+  const match = trimmed.match(/^([A-Za-z]+)/)
+  return match ? match[1].toUpperCase() : ''
+}
+
+// Track if department was manually edited by user
+const departmentManuallyEdited = ref(false)
+
+// Watch courseId to auto-update department (only if not manually edited)
+watch(() => newSection.value.courseId, (newCourseId, oldCourseId) => {
+  // Only auto-update if course ID changed and department wasn't manually edited
+  if (newCourseId && newCourseId !== oldCourseId && !departmentManuallyEdited.value) {
+    const extracted = extractDepartment(newCourseId)
+    if (extracted) {
+      newSection.value.department = extracted
+    }
+  }
+})
+
+// Watch department to track if user manually edited it
+watch(() => newSection.value.department, (newDept, oldDept) => {
+  if (newSection.value.courseId && newDept !== oldDept) {
+    const extracted = extractDepartment(newSection.value.courseId)
+    // If the department doesn't match what would be auto-extracted, it was manually edited
+    if (newDept && extracted && newDept !== extracted) {
+      departmentManuallyEdited.value = true
+    }
+  }
 })
 const showConflictModal = ref(false)
 const conflictingSections = ref<any[]>([])
@@ -1280,6 +1344,8 @@ const closeCreateSectionModal = () => {
 const resetSectionForm = () => {
   newSection.value = {
     courseId: '',
+    courseTitle: '',
+    department: '',
     sectionNumber: '',
     instructor: '',
     capacity: 0,
@@ -1292,6 +1358,7 @@ const resetSectionForm = () => {
       }
     ]
   }
+  departmentManuallyEdited.value = false
 }
 
 const addTimeSlot = () => {
@@ -1309,12 +1376,23 @@ const removeTimeSlot = (index: number) => {
 
 const handleCreateSection = async () => {
   try {
-    // Validate required fields
-    if (!newSection.value.courseId) {
-      alert('Please select a course.')
+    // Validate course fields
+    if (!newSection.value.courseId || !newSection.value.courseId.trim()) {
+      alert('Please enter a course number.')
       return
     }
     
+    if (!newSection.value.courseTitle || !newSection.value.courseTitle.trim()) {
+      alert('Please enter a course name.')
+      return
+    }
+    
+    if (!newSection.value.department || !newSection.value.department.trim()) {
+      alert('Please enter a department. It should be auto-filled from the course number.')
+      return
+    }
+    
+    // Validate section fields
     if (!newSection.value.sectionNumber || !newSection.value.sectionNumber.trim()) {
       alert('Please enter a section number.')
       return
@@ -1370,20 +1448,52 @@ const handleCreateSection = async () => {
     
     loading.value = true
     
-    // Log the request for debugging
-    const requestData = {
-      courseId: newSection.value.courseId,
+    // Step 1: Create the course
+    let courseId = newSection.value.courseId.trim()
+    
+    // Check if course already exists
+    const existingCourse = courseStore.getCourseById(courseId)
+    
+    if (!existingCourse) {
+      // Create new course
+      console.log('Creating new course...')
+      const courseData = {
+        id: courseId,
+        title: newSection.value.courseTitle.trim(),
+        department: newSection.value.department.trim().toUpperCase()
+      }
+      
+      console.log('Course data:', JSON.stringify(courseData, null, 2))
+      
+      try {
+        const createdCourse = await courseStore.createCourse(courseData)
+        console.log('Course created successfully:', createdCourse)
+        courseId = createdCourse.id
+      } catch (error) {
+        console.error('Error creating course:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create course.'
+        alert(`Error creating course: ${errorMessage}`)
+        throw error
+      }
+    } else {
+      console.log('Course already exists, using existing course:', existingCourse)
+      courseId = existingCourse.id
+    }
+    
+    // Step 2: Create the section
+    const sectionData = {
+      courseId: courseId,
       sectionNumber: newSection.value.sectionNumber.trim(),
       instructor: newSection.value.instructor.trim(),
       capacity: newSection.value.capacity,
       timeSlots: validTimeSlots
     }
     
-    console.log('Creating section with data:', JSON.stringify(requestData, null, 2))
+    console.log('Creating section with data:', JSON.stringify(sectionData, null, 2))
     
-    await sectionStore.createSection(requestData)
+    await sectionStore.createSection(sectionData)
     
-    alert('Section created successfully!')
+    alert('Course and section created successfully!')
     closeCreateSectionModal()
   } catch (error) {
     console.error('Error creating section:', error)
@@ -2397,7 +2507,7 @@ onMounted(async () => {
 .modal {
   background: white;
   border-radius: 8px;
-  max-width: 500px;
+  max-width: 600px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
@@ -2508,6 +2618,27 @@ onMounted(async () => {
   margin-bottom: 0.5rem;
   font-weight: 600;
   color: #495057;
+}
+
+.form-section-title {
+  margin: 1.5rem 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #dee2e6;
+  color: #2c3e50;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.form-section-title:first-child {
+  margin-top: 0;
+}
+
+.form-help-text {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-style: italic;
 }
 
 .form-input {
