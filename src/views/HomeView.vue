@@ -63,7 +63,7 @@
       <div class="course-search-sidebar">
         <div class="search-header">
           <button @click="showCreateSectionModal = true" class="btn-create-section">
-            New Section
+            New Course
           </button>
           <div class="search-controls">
             <input
@@ -540,7 +540,7 @@
     <div v-if="showCreateSectionModal" class="modal-overlay" @click="closeCreateSectionModal">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>Create New Section</h3>
+          <h3>Create New Course</h3>
           <button @click="closeCreateSectionModal" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
@@ -607,19 +607,6 @@
                 type="text"
                 required
                 placeholder="Professor name"
-                class="form-input"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="newSectionCapacity">Capacity:</label>
-              <input
-                id="newSectionCapacity"
-                v-model.number="newSection.capacity"
-                type="number"
-                required
-                min="1"
-                placeholder="e.g., 30"
                 class="form-input"
               />
             </div>
@@ -694,7 +681,7 @@
 
             <div class="form-actions">
               <button type="submit" class="btn btn-primary" :disabled="loading">
-                {{ loading ? 'Creating...' : 'Create Course & Section' }}
+                {{ loading ? 'Creating...' : 'Create' }}
               </button>
               <button type="button" @click="closeCreateSectionModal" class="btn btn-secondary">
                 Cancel
@@ -761,7 +748,6 @@ const newSection = ref({
   department: '',
   sectionNumber: '',
   instructor: '',
-  capacity: 0,
   timeSlots: [
     {
       days: [] as string[],
@@ -1348,7 +1334,6 @@ const resetSectionForm = () => {
     department: '',
     sectionNumber: '',
     instructor: '',
-    capacity: 0,
     timeSlots: [
       {
         days: [],
@@ -1400,11 +1385,6 @@ const handleCreateSection = async () => {
     
     if (!newSection.value.instructor || !newSection.value.instructor.trim()) {
       alert('Please enter an instructor name.')
-      return
-    }
-    
-    if (!newSection.value.capacity || newSection.value.capacity <= 0) {
-      alert('Please enter a valid capacity (greater than 0).')
       return
     }
     
@@ -1481,19 +1461,39 @@ const handleCreateSection = async () => {
     }
     
     // Step 2: Create the section
+    // Set default capacity to 1 since it's not required from user
     const sectionData = {
       courseId: courseId,
       sectionNumber: newSection.value.sectionNumber.trim(),
       instructor: newSection.value.instructor.trim(),
-      capacity: newSection.value.capacity,
+      capacity: 1,
       timeSlots: validTimeSlots
     }
     
     console.log('Creating section with data:', JSON.stringify(sectionData, null, 2))
     
-    await sectionStore.createSection(sectionData)
+    // Create the section
+    const createdSection = await sectionStore.createSection(sectionData)
     
-    alert('Course and section created successfully!')
+    // Refresh sections list to ensure it's searchable (though it's already added to the store)
+    await sectionStore.fetchAllSections()
+    
+    // Refresh courses list to ensure the course is available
+    await courseStore.fetchAllCourses()
+    
+    // Automatically add the section to the currently selected schedule if one exists
+    if (selectedScheduleId.value && createdSection?.id) {
+      try {
+        await scheduleStore.addSectionToSchedule(selectedScheduleId.value, createdSection.id)
+        console.log('Section automatically added to schedule:', selectedScheduleId.value)
+      } catch (error) {
+        console.error('Error adding section to schedule:', error)
+        // Don't fail the whole operation if adding to schedule fails
+        // Just log the error and continue
+      }
+    }
+    
+    alert('Course and section created successfully!' + (selectedScheduleId.value ? ' The section has been added to your current schedule.' : ''))
     closeCreateSectionModal()
   } catch (error) {
     console.error('Error creating section:', error)
