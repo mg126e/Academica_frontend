@@ -1309,20 +1309,86 @@ const removeTimeSlot = (index: number) => {
 
 const handleCreateSection = async () => {
   try {
+    // Validate required fields
+    if (!newSection.value.courseId) {
+      alert('Please select a course.')
+      return
+    }
+    
+    if (!newSection.value.sectionNumber || !newSection.value.sectionNumber.trim()) {
+      alert('Please enter a section number.')
+      return
+    }
+    
+    if (!newSection.value.instructor || !newSection.value.instructor.trim()) {
+      alert('Please enter an instructor name.')
+      return
+    }
+    
+    if (!newSection.value.capacity || newSection.value.capacity <= 0) {
+      alert('Please enter a valid capacity (greater than 0).')
+      return
+    }
+    
+    // Filter and validate time slots
+    const validTimeSlots = newSection.value.timeSlots
+      .filter(slot => {
+        // Filter out empty slots (no days selected)
+        if (!slot.days || slot.days.length === 0) {
+          return false
+        }
+        
+        // Validate that required fields are present
+        if (!slot.startTime || !slot.endTime) {
+          return false
+        }
+        
+        return true
+      })
+      .map(slot => ({
+        days: slot.days,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        location: slot.location || '' // Location can be empty
+      }))
+    
+    if (validTimeSlots.length === 0) {
+      alert('Please add at least one time slot with at least one day selected.')
+      return
+    }
+    
+    // Validate that start time is before end time for each slot
+    for (const slot of validTimeSlots) {
+      const start = new Date(`2000-01-01T${slot.startTime}`)
+      const end = new Date(`2000-01-01T${slot.endTime}`)
+      
+      if (start >= end) {
+        alert(`For time slot ${slot.days.join(', ')}, start time must be before end time.`)
+        return
+      }
+    }
+    
     loading.value = true
-    await sectionStore.createSection({
+    
+    // Log the request for debugging
+    const requestData = {
       courseId: newSection.value.courseId,
-      sectionNumber: newSection.value.sectionNumber,
-      instructor: newSection.value.instructor,
+      sectionNumber: newSection.value.sectionNumber.trim(),
+      instructor: newSection.value.instructor.trim(),
       capacity: newSection.value.capacity,
-      timeSlots: newSection.value.timeSlots
-    })
+      timeSlots: validTimeSlots
+    }
+    
+    console.log('Creating section with data:', JSON.stringify(requestData, null, 2))
+    
+    await sectionStore.createSection(requestData)
     
     alert('Section created successfully!')
     closeCreateSectionModal()
   } catch (error) {
     console.error('Error creating section:', error)
-    alert('Failed to create section. Please try again.')
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create section. Please try again.'
+    alert(`Error: ${errorMessage}`)
   } finally {
     loading.value = false
   }

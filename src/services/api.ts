@@ -93,12 +93,26 @@ async function apiRequest<T>(
   }
 
   console.log(`Making API request to: ${url}`)
+  
+  // Check if this is an auth endpoint (don't log credentials)
+  const isAuthEndpoint = url.includes('/UserAuth/') || url.includes('/Session/')
+  
   // Sanitized: don't log request body as it may contain credentials
   const sanitizedOptions = { ...defaultOptions, ...options }
-  if (sanitizedOptions.body) {
+  if (sanitizedOptions.body && isAuthEndpoint) {
     sanitizedOptions.body = '[REDACTED]'
   }
   console.log(`Request options:`, sanitizedOptions)
+  
+  // Log request body for non-auth endpoints to help with debugging
+  if (!isAuthEndpoint && options.body) {
+    try {
+      const bodyObj = typeof options.body === 'string' ? JSON.parse(options.body) : options.body
+      console.log('Request body:', JSON.stringify(bodyObj, null, 2))
+    } catch (e) {
+      console.log('Request body (raw):', options.body)
+    }
+  }
   
   try {
     const response = await fetch(url, { ...defaultOptions, ...options })
@@ -110,10 +124,19 @@ async function apiRequest<T>(
       const errorText = await response.text()
       console.error(`API Error for ${url}:`, errorText)
       console.error(`Response status: ${response.status}`)
-      // Sanitized: don't log request body as it may contain credentials
+      
+      // Log request body for debugging non-auth endpoints
+      if (!isAuthEndpoint && options.body) {
+        try {
+          const bodyObj = typeof options.body === 'string' ? JSON.parse(options.body) : options.body
+          console.error('Request body that caused error:', JSON.stringify(bodyObj, null, 2))
+        } catch (e) {
+          console.error('Request body (raw):', options.body)
+        }
+      }
       
       // Try to parse error response as JSON
-      let errorDetails: { message?: string } | null = null
+      let errorDetails: { message?: string; error?: string } | null = null
       try {
         errorDetails = JSON.parse(errorText)
         console.error('Parsed error details:', errorDetails)
@@ -125,7 +148,7 @@ async function apiRequest<T>(
       let errorMessage = ''
       switch (response.status) {
         case 400:
-          errorMessage = errorDetails?.message || 'Bad request. Please check your input data.'
+          errorMessage = errorDetails?.message || errorDetails?.error || 'Bad request. Please check your input data.'
           break
         case 401:
           errorMessage = 'Unauthorized access. Please check your credentials.'
@@ -134,7 +157,7 @@ async function apiRequest<T>(
           errorMessage = 'Resource not found. The requested item may have been deleted.'
           break
         case 500:
-          errorMessage = errorDetails?.message || 'Internal server error. Please try again later.'
+          errorMessage = errorDetails?.message || errorDetails?.error || 'Internal server error. Please try again later.'
           break
         case 502:
           errorMessage = 'Server error. The backend service is temporarily unavailable. Please try again later.'
