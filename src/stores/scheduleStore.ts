@@ -83,6 +83,10 @@ export const useScheduleStore = defineStore('schedule', () => {
       const response = await CourseSchedulingApi.createSchedule(requestData)
       console.log('Create schedule response:', response)
       
+      // Ensure schedules.value is an array before pushing
+      if (!Array.isArray(schedules.value)) {
+        schedules.value = []
+      }
       schedules.value.push(response.s)
       return response.s
     } catch (err) {
@@ -130,6 +134,10 @@ export const useScheduleStore = defineStore('schedule', () => {
         sourceScheduleId,
         newName
       })
+      // Ensure schedules.value is an array before pushing
+      if (!Array.isArray(schedules.value)) {
+        schedules.value = []
+      }
       schedules.value.push(response.s)
       return response.s
     } catch (err) {
