@@ -588,18 +588,6 @@
             <h4 class="form-section-title">Section Information</h4>
 
             <div class="form-group">
-              <label for="newSectionNumber">Section Number:</label>
-              <input
-                id="newSectionNumber"
-                v-model="newSection.sectionNumber"
-                type="text"
-                required
-                placeholder="e.g., 01, A, B"
-                class="form-input"
-              />
-            </div>
-
-            <div class="form-group">
               <label for="newSectionInstructor">Instructor:</label>
               <input
                 id="newSectionInstructor"
@@ -741,12 +729,12 @@ const hoveredSection = ref<Section | null>(null)
 
 // Create Section Modal
 const showCreateSectionModal = ref(false)
-const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 const newSection = ref({
   courseId: '',
   courseTitle: '',
   department: '',
-  sectionNumber: '',
+  sectionNumber: '1',
   instructor: '',
   timeSlots: [
     {
@@ -1332,7 +1320,7 @@ const resetSectionForm = () => {
     courseId: '',
     courseTitle: '',
     department: '',
-    sectionNumber: '',
+    sectionNumber: '1',
     instructor: '',
     timeSlots: [
       {
@@ -1378,11 +1366,7 @@ const handleCreateSection = async () => {
     }
     
     // Validate section fields
-    if (!newSection.value.sectionNumber || !newSection.value.sectionNumber.trim()) {
-      alert('Please enter a section number.')
-      return
-    }
-    
+    // Section number defaults to '1', no need to validate
     if (!newSection.value.instructor || !newSection.value.instructor.trim()) {
       alert('Please enter an instructor name.')
       return
@@ -1471,7 +1455,7 @@ const handleCreateSection = async () => {
     // Set default capacity to 1 since it's not required from user
     const sectionData = {
       courseId: courseId,
-      sectionNumber: newSection.value.sectionNumber.trim(),
+      sectionNumber: newSection.value.sectionNumber.trim() || '1',
       instructor: newSection.value.instructor.trim(),
       capacity: 1,
       timeSlots: validTimeSlots
