@@ -1452,7 +1452,14 @@ const handleCreateSection = async () => {
       } catch (error) {
         console.error('Error creating course:', error)
         const errorMessage = error instanceof Error ? error.message : 'Failed to create course.'
-        alert(`Error creating course: ${errorMessage}`)
+        
+        // Provide more helpful error messages for timeout errors
+        let userMessage = errorMessage
+        if (errorMessage.includes('timed out') || errorMessage.includes('504')) {
+          userMessage = 'The server is taking too long to respond. This often happens when the backend service is waking up from sleep (Render.com free tier). Please wait a moment and try again.'
+        }
+        
+        alert(`Error creating course: ${userMessage}`)
         throw error
       }
     } else {
@@ -1498,7 +1505,16 @@ const handleCreateSection = async () => {
   } catch (error) {
     console.error('Error creating section:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to create section. Please try again.'
-    alert(`Error: ${errorMessage}`)
+    
+    // Provide more helpful error messages for timeout errors
+    let userMessage = errorMessage
+    if (errorMessage.includes('timed out') || errorMessage.includes('504')) {
+      userMessage = 'The server is taking too long to respond. This often happens when the backend service is waking up from sleep (Render.com free tier).\n\nPlease wait 10-15 seconds and try again. Your form data has been preserved.'
+    } else if (errorMessage.includes('502') || errorMessage.includes('503')) {
+      userMessage = 'The server is temporarily unavailable. This may be because the backend service is starting up.\n\nPlease wait a moment and try again. Your form data has been preserved.'
+    }
+    
+    alert(`Error: ${userMessage}`)
   } finally {
     loading.value = false
   }
