@@ -585,20 +585,6 @@
               <small class="form-help-text">Auto-filled from course number, but can be edited</small>
             </div>
 
-            <h4 class="form-section-title">Section Information</h4>
-
-            <div class="form-group">
-              <label for="newSectionInstructor">Instructor:</label>
-              <input
-                id="newSectionInstructor"
-                v-model="newSection.instructor"
-                type="text"
-                required
-                placeholder="Professor name"
-                class="form-input"
-              />
-            </div>
-
             <div class="form-group">
               <label>Time Slots:</label>
               <div v-for="(timeSlot, index) in newSection.timeSlots" :key="index" class="time-slot-group">
@@ -1367,10 +1353,7 @@ const handleCreateSection = async () => {
     
     // Validate section fields
     // Section number defaults to '1', no need to validate
-    if (!newSection.value.instructor || !newSection.value.instructor.trim()) {
-      alert('Please enter an instructor name.')
-      return
-    }
+    // Instructor is optional, no validation needed
     
     // Filter and validate time slots
     const validTimeSlots = newSection.value.timeSlots
@@ -1451,12 +1434,61 @@ const handleCreateSection = async () => {
       courseId = existingCourse.id
     }
     
+    // Step 2: Check for conflicts before creating the section (if a schedule is selected)
+    if (selectedScheduleId.value) {
+      // Refresh schedule data to ensure we have the latest sections
+      try {
+        await scheduleStore.fetchSchedule(selectedScheduleId.value)
+      } catch (error) {
+        console.error('Error refreshing schedule:', error)
+      }
+      
+      // Create a temporary section object for conflict checking
+      const tempSection: Section = {
+        id: 'temp', // Temporary id, not used by getConflictingSections
+        courseId: courseId,
+        sectionNumber: newSection.value.sectionNumber.trim() || '1',
+        instructor: newSection.value.instructor?.trim() || '',
+        capacity: 1,
+        timeSlots: validTimeSlots
+      }
+      
+      const conflicts = getConflictingSections(tempSection)
+      
+      if (conflicts.length >= 2) {
+        // Show modal to choose which section to replace
+        // But first we need to create the section, so we'll handle this after creation
+        // Store the section data for later use
+        const sectionData = {
+          courseId: courseId,
+          sectionNumber: newSection.value.sectionNumber.trim() || '1',
+          instructor: newSection.value.instructor?.trim() || '',
+          capacity: 1,
+          timeSlots: validTimeSlots
+        }
+        
+        console.log('Creating section with data:', JSON.stringify(sectionData, null, 2))
+        
+        // Create the section first
+        const createdSection = await sectionStore.createSection(sectionData)
+        
+        // Then show conflict modal
+        sectionToAdd.value = createdSection
+        conflictingSections.value = conflicts
+        showConflictModal.value = true
+        alert('Course and section created successfully! However, there are conflicts with your schedule. Please choose which course to replace.')
+        closeCreateSectionModal()
+        loading.value = false
+        return
+      }
+    }
+    
     // Step 2: Create the section
     // Set default capacity to 1 since it's not required from user
     const sectionData = {
       courseId: courseId,
       sectionNumber: newSection.value.sectionNumber.trim() || '1',
-      instructor: newSection.value.instructor.trim(),
+      instructor: newSection.value.instructor?.trim() || '',
       capacity: 1,
       timeSlots: validTimeSlots
     }
@@ -1464,7 +1496,41 @@ const handleCreateSection = async () => {
     console.log('Creating section with data:', JSON.stringify(sectionData, null, 2))
     
     // Create the section
-    const createdSection = await sectionStore.createSection(sectionData)
+    let createdSection: Section
+    try {
+      createdSection = await sectionStore.createSection(sectionData)
+    } catch (error) {
+      // If we get a 500 error, it might be a conflict the backend detected
+      const errorMessage = error instanceof Error ? error.message : ''
+      if ((errorMessage.includes('500') || errorMessage.includes('internal server')) && selectedScheduleId.value) {
+        // Try to check conflicts and show modal
+        try {
+          await scheduleStore.fetchSchedule(selectedScheduleId.value)
+        } catch (fetchError) {
+          console.error('Error refreshing schedule:', fetchError)
+        }
+        
+        const tempSection: Section = {
+          id: 'temp',
+          courseId: courseId,
+          sectionNumber: newSection.value.sectionNumber.trim() || '1',
+          instructor: newSection.value.instructor?.trim() || '',
+          capacity: 1,
+          timeSlots: validTimeSlots
+        }
+        
+        const conflicts = getConflictingSections(tempSection)
+        if (conflicts.length >= 2) {
+          // We need to create the section first, but it failed
+          // This is a problem - the backend rejected it
+          // Let's show a helpful error message
+          alert('Failed to create section due to schedule conflicts. The time slot you selected conflicts with existing courses in your schedule. Please choose a different time or remove conflicting courses first.')
+          loading.value = false
+          throw error
+        }
+      }
+      throw error
+    }
     
     // Refresh sections list to ensure it's searchable (though it's already added to the store)
     await sectionStore.fetchAllSections()
@@ -1474,11 +1540,46 @@ const handleCreateSection = async () => {
     
     // Automatically add the section to the currently selected schedule if one exists
     if (selectedScheduleId.value && createdSection?.id) {
+      // Refresh schedule data to ensure we have the latest sections
+      try {
+        await scheduleStore.fetchSchedule(selectedScheduleId.value)
+      } catch (error) {
+        console.error('Error refreshing schedule:', error)
+      }
+      
+      // Check for conflicts before adding
+      const conflicts = getConflictingSections(createdSection)
+      
+      if (conflicts.length >= 2) {
+        // Show modal to choose which section to replace
+        sectionToAdd.value = createdSection
+        conflictingSections.value = conflicts
+        showConflictModal.value = true
+        alert('Course and section created successfully! However, there are conflicts with your schedule. Please choose which course to replace.')
+        closeCreateSectionModal()
+        return
+      }
+      
+      // If conflicts < 2, add directly (or handle appropriately)
       try {
         await scheduleStore.addSectionToSchedule(selectedScheduleId.value, createdSection.id)
         console.log('Section automatically added to schedule:', selectedScheduleId.value)
       } catch (error) {
         console.error('Error adding section to schedule:', error)
+        // If we get an error (like 500), it might be a conflict the backend detected
+        // Check conflicts again and show modal as fallback
+        const errorMessage = error instanceof Error ? error.message : ''
+        if (errorMessage.includes('500') || errorMessage.includes('internal server')) {
+          const conflicts = getConflictingSections(createdSection)
+          if (conflicts.length >= 2) {
+            sectionToAdd.value = createdSection
+            conflictingSections.value = conflicts
+            showConflictModal.value = true
+            alert('Course and section created successfully! However, there are conflicts with your schedule. Please choose which course to replace.')
+            closeCreateSectionModal()
+            return
+          }
+        }
         // Don't fail the whole operation if adding to schedule fails
         // Just log the error and continue
       }
