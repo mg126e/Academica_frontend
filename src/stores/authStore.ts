@@ -85,6 +85,29 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Fetches the actual user ID from the session by calling getAllSchedules
+   * which filters by the session's user ID. Extracts the owner from the response.
+   */
+  const fetchUserIdFromSession = async (): Promise<string | null> => {
+    try {
+      // Import here to avoid circular dependency
+      const { CourseSchedulingApi } = await import('../services/api')
+      const schedules = await CourseSchedulingApi.getAllSchedules()
+      
+      // Extract user ID from the first schedule's owner (if any exist)
+      if (Array.isArray(schedules) && schedules.length > 0 && schedules[0].owner) {
+        return schedules[0].owner
+      }
+      
+      // If no schedules exist yet, we'll discover the user ID when creating the first schedule
+      return null
+    } catch (err) {
+      console.error('Error fetching user ID from session:', err)
+      return null
+    }
+  }
+
   const authenticate = async (request: AuthenticateRequest) => {
     loading.value = true
     clearError()
@@ -98,10 +121,14 @@ export const useAuthStore = defineStore('auth', () => {
       // Use the session ID as the token for authentication tracking
       setToken(response.session)
       
-      // Create a basic user object (we don't have user ID from response anymore)
-      // We'll use the session ID as a temporary identifier
+      // Fetch the actual user ID from the session
+      // getAllSchedules filters by session user ID, so we can extract the owner
+      const actualUserId = await fetchUserIdFromSession()
+      
+      // Create user object with actual user ID if available, otherwise use session ID temporarily
+      const userId = actualUserId || response.session
       setUser({
-        _id: response.session, // Temporary: use session ID as identifier
+        _id: userId,
         username: request.username,
         email: '', // We don't have email from authenticate response
         confirmed: true // Assume confirmed if authentication succeeds
@@ -110,8 +137,14 @@ export const useAuthStore = defineStore('auth', () => {
       // Set a basic session object in the session store
       sessionStore.setSession({
         _id: response.session,
-        userID: '', // We don't have user ID from response
+        userID: actualUserId || '', // Set actual user ID if we found it
         expiryTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+      })
+      
+      console.log('Authentication successful:', {
+        sessionId: response.session,
+        userId: userId,
+        userIdSource: actualUserId ? 'from session (schedules)' : 'temporary (session ID)'
       })
       
       return response
