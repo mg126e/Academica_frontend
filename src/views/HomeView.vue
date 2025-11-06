@@ -1560,7 +1560,7 @@ const handleCreateSection = async () => {
     if (selectedScheduleId.value) {
       // Refresh schedule data to ensure we have the latest sections
       try {
-        await scheduleStore.fetchSchedule(selectedScheduleId.value)
+        await scheduleStore.fetchAllSchedules()
       } catch (error) {
         console.error('Error refreshing schedule:', error)
       }
@@ -1627,7 +1627,7 @@ const handleCreateSection = async () => {
       if ((errorMessage.includes('500') || errorMessage.includes('internal server')) && selectedScheduleId.value) {
         // Try to check conflicts and show modal
         try {
-          await scheduleStore.fetchSchedule(selectedScheduleId.value)
+          await scheduleStore.fetchAllSchedules()
         } catch (fetchError) {
           console.error('Error refreshing schedule:', fetchError)
         }
@@ -1664,7 +1664,7 @@ const handleCreateSection = async () => {
     if (selectedScheduleId.value && createdSection?.id) {
       // Refresh schedule data to ensure we have the latest sections
       try {
-        await scheduleStore.fetchSchedule(selectedScheduleId.value)
+        await scheduleStore.fetchAllSchedules()
       } catch (error) {
         console.error('Error refreshing schedule:', error)
       }
@@ -1976,7 +1976,7 @@ const addSuggestedCourseToSchedule = async (suggestedCourse: FilteredCourse) => 
     if (response.success) {
       // Success - refresh schedule to show the new course
       try {
-        await scheduleStore.fetchSchedule(selectedScheduleId.value)
+        await scheduleStore.fetchAllSchedules()
         await sectionStore.fetchAllSections()
       } catch (fetchError) {
         console.error('Error refreshing schedule:', fetchError)
