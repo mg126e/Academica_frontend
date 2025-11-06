@@ -373,7 +373,10 @@
             </div>
             
             <div v-else class="rating-not-found">
-              <p v-if="professorRating && professorRating.schoolName && !isWellesleyProfessor(professorRating)">
+              <p v-if="ratingNotAvailableForUserCreated">
+                Rating not available - Rate My Professor ratings are not available for user-created courses.
+              </p>
+              <p v-else-if="professorRating && professorRating.schoolName && !isWellesleyProfessor(professorRating)">
                 Rating not displayed - professor does not teach at Wellesley College
               </p>
               <p v-else-if="professorRating && professorRating.numRatings === 0">
@@ -695,6 +698,7 @@ const loading = ref(false)
 const tooltipStyle = ref({})
 const professorRating = ref<ProfessorRating | null>(null)
 const loadingRating = ref(false)
+const ratingNotAvailableForUserCreated = ref(false)
 
 // AI Suggestions
 const aiSuggestedCourses = ref<FilteredCourse[]>([])
@@ -1150,6 +1154,7 @@ const confirmDeleteSchedule = async (scheduleId: string) => {
 const showCourseDetails = async (course: any) => {
   selectedCourse.value = course
   professorRating.value = null
+  ratingNotAvailableForUserCreated.value = false
   
   // Fetch professor rating for this section
   if (course.sectionId) {
@@ -1160,10 +1165,16 @@ const showCourseDetails = async (course: any) => {
       })
       if (response.success && response.data) {
         professorRating.value = response.data
+        ratingNotAvailableForUserCreated.value = false
+      } else if (response.success === false) {
+        // Rating not available for user-created courses
+        professorRating.value = null
+        ratingNotAvailableForUserCreated.value = true
       }
     } catch (error) {
       console.error('Error fetching professor rating:', error)
       // Silently fail - rating is optional
+      ratingNotAvailableForUserCreated.value = false
     } finally {
       loadingRating.value = false
     }
@@ -1173,12 +1184,14 @@ const showCourseDetails = async (course: any) => {
 const closeCourseDetails = () => {
   selectedCourse.value = null
   professorRating.value = null
+  ratingNotAvailableForUserCreated.value = false
 }
 
 const refreshProfessorRating = async () => {
   if (!selectedCourse.value || !selectedCourse.value.instructor) return
   
   loadingRating.value = true
+  ratingNotAvailableForUserCreated.value = false
   try {
     console.log('Refreshing rating for:', selectedCourse.value.instructor)
     const response = await ProfessorRatingsApi.refreshRating({
@@ -1189,12 +1202,20 @@ const refreshProfessorRating = async () => {
     
     if (response.success && response.data) {
       professorRating.value = response.data
+      ratingNotAvailableForUserCreated.value = false
       alert('Rating refreshed successfully!')
+    } else if (response.success === false) {
+      // Rating not available for user-created courses
+      professorRating.value = null
+      ratingNotAvailableForUserCreated.value = true
+      alert(response.message || 'Rating not available for user-created courses.')
     } else {
+      ratingNotAvailableForUserCreated.value = false
       alert(response.message || 'Could not refresh rating. Professor may not be found on Rate My Professor.')
     }
   } catch (error) {
     console.error('Error refreshing professor rating:', error)
+    ratingNotAvailableForUserCreated.value = false
     alert('Failed to refresh rating. Please try again.')
   } finally {
     loadingRating.value = false
