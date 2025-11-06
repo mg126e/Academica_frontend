@@ -509,8 +509,7 @@
     <div v-if="showSuggestionInfoPopupState" class="modal-overlay suggestion-info-overlay" @click="closeSuggestionInfoPopup">
       <div class="suggestion-info-popup" @click.stop>
         <div class="suggestion-info-content">
-          <div class="suggestion-info-icon">💡</div>
-          <h3 class="suggestion-info-title">Search the course code to learn more about these suggestions</h3>
+          <h3 class="suggestion-info-title">Search the course code to learn more about this suggestions</h3>
           <button @click="closeSuggestionInfoPopup" class="suggestion-info-close-btn">&times;</button>
         </div>
       </div>
@@ -4043,31 +4042,15 @@ onMounted(async () => {
 }
 
 /* Suggestion Info Popup */
-.suggestion-info-overlay {
-  animation: fadeIn 0.2s ease-out;
-}
-
 .suggestion-info-popup {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #e3f2fd;
   border-radius: 16px;
   padding: 0;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
-  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   position: relative;
   overflow: hidden;
-}
-
-.suggestion-info-popup::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-  animation: shimmer 3s infinite;
 }
 
 .suggestion-info-content {
@@ -4081,19 +4064,12 @@ onMounted(async () => {
   gap: 1rem;
 }
 
-.suggestion-info-icon {
-  font-size: 3rem;
-  animation: bounce 0.6s ease-out;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-}
-
 .suggestion-info-title {
   margin: 0;
-  color: white;
+  color: #1976d2;
   font-size: 1.25rem;
   font-weight: 600;
   line-height: 1.6;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   letter-spacing: 0.3px;
 }
 
@@ -4101,67 +4077,26 @@ onMounted(async () => {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(25, 118, 210, 0.1);
   border: none;
-  color: white;
-  font-size: 1.75rem;
-  width: 2.5rem;
-  height: 2.5rem;
+  color: #1976d2;
+  font-size: 1.2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
   z-index: 2;
-  backdrop-filter: blur(10px);
 }
 
 .suggestion-info-close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(90deg) scale(1.1);
+  background: rgba(25, 118, 210, 0.2);
 }
 
 .suggestion-info-close-btn:active {
-  transform: rotate(90deg) scale(0.95);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px) scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  background: rgba(25, 118, 210, 0.15);
 }
 
 .modal-description {
