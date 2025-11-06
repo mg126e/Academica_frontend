@@ -77,6 +77,38 @@ class ApiServiceError extends Error {
   }
 }
 
+/**
+ * Safely parses a JSON response, handling empty or malformed responses
+ */
+async function safeJsonParse(response: Response): Promise<any> {
+  // Get response as text first (can only read once)
+  const text = await response.text()
+  
+  // Check content-type header
+  const contentType = response.headers.get('content-type')
+  if (!contentType || !contentType.includes('application/json')) {
+    throw new Error(`Expected JSON but got ${contentType || 'unknown content-type'}. Response: ${text.substring(0, 100)}`)
+  }
+  
+  // Handle empty responses
+  if (!text || text.trim() === '') {
+    console.error('Empty response body from server')
+    // For void return types, return undefined instead of throwing
+    return undefined
+  }
+
+  // Try to parse JSON
+  try {
+    return JSON.parse(text)
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      console.error('Invalid JSON response:', text)
+      throw new Error(`Server returned invalid JSON: ${e.message}`)
+    }
+    throw e
+  }
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -123,7 +155,14 @@ async function apiRequest<T>(
     console.log(`Response headers:`, Object.fromEntries(response.headers.entries()))
     
     if (!response.ok) {
-      const errorText = await response.text()
+      // Get error text safely
+      let errorText = ''
+      try {
+        errorText = await response.text()
+      } catch (e) {
+        errorText = 'Could not read error response'
+      }
+      
       console.error(`API Error for ${url}:`, errorText)
       console.error(`Response status: ${response.status}`)
       
@@ -139,11 +178,13 @@ async function apiRequest<T>(
       
       // Try to parse error response as JSON
       let errorDetails: { message?: string; error?: string } | null = null
-      try {
-        errorDetails = JSON.parse(errorText)
-        console.error('Parsed error details:', errorDetails)
-      } catch (e) {
-        console.error('Could not parse error response as JSON:', e)
+      if (errorText && errorText.trim() !== '') {
+        try {
+          errorDetails = JSON.parse(errorText)
+          console.error('Parsed error details:', errorDetails)
+        } catch (e) {
+          console.error('Could not parse error response as JSON:', e)
+        }
       }
       
       // Provide specific error messages based on status codes
@@ -171,13 +212,19 @@ async function apiRequest<T>(
           errorMessage = errorDetails?.message || 'Request timed out. The server took too long to respond. Please try again later.'
           break
         default:
-          errorMessage = `HTTP error! status: ${response.status} - ${errorDetails?.message || errorText}`
+          errorMessage = `HTTP error! status: ${response.status} - ${errorDetails?.message || errorText || response.statusText}`
       }
       
       throw new ApiServiceError(errorMessage)
     }
 
-    const data = await response.json()
+    // Use safe JSON parsing
+    const data = await safeJsonParse(response)
+    
+    // Handle void return types (undefined from empty response)
+    if (data === undefined) {
+      return undefined as T
+    }
     
     // Check if the response contains an error
     if (data && typeof data === 'object' && 'error' in data) {
