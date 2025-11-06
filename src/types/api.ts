@@ -94,6 +94,18 @@ export interface AddSectionRequest {
   sectionId: string
 }
 
+export interface AddSectionByCourseCodeRequest {
+  scheduleId: string
+  courseCode: string
+  sectionNumber: string
+}
+
+export interface AddSectionByCourseCodeResponse {
+  success: boolean
+  sectionId?: string
+  message?: string
+}
+
 export interface EditSectionRequest {
   sectionId: string
   updates: {

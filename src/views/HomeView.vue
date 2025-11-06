@@ -62,7 +62,7 @@
       <!-- Section Search Sidebar -->
       <div class="course-search-sidebar">
         <div class="search-header">
-          <button @click="showCreateSectionModal = true" class="btn-create-section">
+          <button @click="openCreateSectionModal" class="btn-create-section">
             New Course
           </button>
           <div class="search-controls">
@@ -169,6 +169,9 @@
                   v-for="suggestion in aiSuggestedCourses.slice(0, 3)" 
                   :key="suggestion.course_code + suggestion.section"
                   class="suggested-course-item"
+                  @mouseenter="hoveredSuggestedCourse = suggestion"
+                  @mouseleave="hoveredSuggestedCourse = null"
+                  @click="addSuggestedCourseToSchedule(suggestion)"
                 >
                   <div class="suggested-course-header">
                     <strong>{{ suggestion.course_code }}</strong>
@@ -539,6 +542,42 @@
         </div>
       </div>
     </div>
+    <!-- Alert Modal -->
+    <div v-if="showAlertModal" class="modal-overlay" @click="closeAlertModal">
+      <div class="modal alert-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Notice</h3>
+          <button @click="closeAlertModal" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="alert-message">{{ alertMessage }}</p>
+          <div class="modal-actions">
+            <button @click="closeAlertModal" class="btn btn-primary">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteConfirmModal" class="modal-overlay" @click="closeDeleteConfirmModal">
+      <div class="modal confirm-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Confirm Deletion</h3>
+          <button @click="closeDeleteConfirmModal" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-message">
+            Are you sure you want to delete <strong>"{{ scheduleToDeleteName }}"</strong>?
+          </p>
+          <p class="confirm-warning">This action cannot be undone.</p>
+          <div class="modal-actions">
+            <button @click="closeDeleteConfirmModal" class="btn btn-cancel">Cancel</button>
+            <button @click="handleDeleteSchedule" class="btn btn-delete">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Create Section Modal -->
     <div v-if="showCreateSectionModal" class="modal-overlay" @click="closeCreateSectionModal">
       <div class="modal" @click.stop>
@@ -677,7 +716,7 @@ import { useScheduleStore } from '@/stores/scheduleStore'
 import { useSectionStore } from '@/stores/sectionStore'
 import { useCourseStore } from '@/stores/courseStore'
 import { useFilteringStore } from '@/stores/filteringStore'
-import { ProfessorRatingsApi } from '@/services/api'
+import { ProfessorRatingsApi, CourseSchedulingApi } from '@/services/api'
 import type { Schedule, Section, Course, ProfessorRating, FilteredCourse, TimeSlot } from '@/types/api'
 
 // Stores
@@ -716,9 +755,15 @@ const selectedTimeFilter = ref('')
 const showAdvancedFilters = ref(false)
 const selectedSectionForDetails = ref<Section | null>(null)
 const hoveredSection = ref<Section | null>(null)
+const hoveredSuggestedCourse = ref<FilteredCourse | null>(null)
 
 // Create Section Modal
 const showCreateSectionModal = ref(false)
+const showAlertModal = ref(false)
+const alertMessage = ref('')
+const showDeleteConfirmModal = ref(false)
+const scheduleToDelete = ref<string | null>(null)
+const scheduleToDeleteName = ref('')
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 const newSection = ref({
   courseId: '',
@@ -885,6 +930,29 @@ const scheduleCourses = computed(() => {
         })
       })
     }
+  }
+  
+  // Add hovered suggested course as preview
+  if (hoveredSuggestedCourse.value) {
+    const timeSlots = parseMeetingTime(hoveredSuggestedCourse.value.meeting_time)
+    timeSlots.forEach((timeSlot, slotIndex) => {
+      timeSlot.days.forEach(day => {
+        const abbreviatedDay = convertDayName(day)
+        courses.push({
+          id: `preview-suggested-${hoveredSuggestedCourse.value!.course_code}-${day}-${timeSlot.startTime}`,
+          courseId: `${hoveredSuggestedCourse.value!.course_code}-${hoveredSuggestedCourse.value!.section}`,
+          courseName: hoveredSuggestedCourse.value!.title,
+          day: [abbreviatedDay],
+          startTime: timeSlot.startTime,
+          endTime: timeSlot.endTime,
+          location: timeSlot.location || '',
+          instructor: hoveredSuggestedCourse.value!.professor,
+          color: 'preview-color',
+          sectionId: null,
+          isPreview: true
+        })
+      })
+    })
   }
   
   return courses
@@ -1129,26 +1197,40 @@ const onScheduleChange = () => {
   // Schedule change is handled by the computed properties
 }
 
-const confirmDeleteSchedule = async (scheduleId: string) => {
+const confirmDeleteSchedule = (scheduleId: string) => {
   const schedule = scheduleStore.getScheduleById(scheduleId)
   if (!schedule) return
   
-  const confirmed = confirm(`Are you sure you want to delete "${schedule.name}"? This action cannot be undone.`)
-  if (!confirmed) return
+  scheduleToDelete.value = scheduleId
+  scheduleToDeleteName.value = schedule.name
+  showDeleteConfirmModal.value = true
+}
+
+const handleDeleteSchedule = async () => {
+  if (!scheduleToDelete.value) return
   
   try {
-    await scheduleStore.deleteSchedule(scheduleId)
+    await scheduleStore.deleteSchedule(scheduleToDelete.value)
     
     // If the deleted schedule was selected, clear selection
-    if (selectedScheduleId.value === scheduleId) {
+    if (selectedScheduleId.value === scheduleToDelete.value) {
       selectedScheduleId.value = ''
     }
     
-    alert('Schedule deleted successfully!')
+    // Close modal and reset
+    closeDeleteConfirmModal()
+    
+    // Success is indicated by the schedule being removed from the list
   } catch (error) {
     console.error('Error deleting schedule:', error)
-    alert('Failed to delete schedule. Please try again.')
+    showAlert('Failed to delete schedule. Please try again.')
   }
+}
+
+const closeDeleteConfirmModal = () => {
+  showDeleteConfirmModal.value = false
+  scheduleToDelete.value = null
+  scheduleToDeleteName.value = ''
 }
 
 const showCourseDetails = async (course: any) => {
@@ -1203,20 +1285,20 @@ const refreshProfessorRating = async () => {
     if (response.success && response.data) {
       professorRating.value = response.data
       ratingNotAvailableForUserCreated.value = false
-      alert('Rating refreshed successfully!')
+      // Success is indicated by the rating being updated in the UI
     } else if (response.success === false) {
       // Rating not available for user-created courses
       professorRating.value = null
       ratingNotAvailableForUserCreated.value = true
-      alert(response.message || 'Rating not available for user-created courses.')
+      showAlert(response.message || 'Rating not available for user-created courses.')
     } else {
       ratingNotAvailableForUserCreated.value = false
-      alert(response.message || 'Could not refresh rating. Professor may not be found on Rate My Professor.')
+      showAlert(response.message || 'Could not refresh rating. Professor may not be found on Rate My Professor.')
     }
   } catch (error) {
     console.error('Error refreshing professor rating:', error)
     ratingNotAvailableForUserCreated.value = false
-    alert('Failed to refresh rating. Please try again.')
+    showAlert('Failed to refresh rating. Please try again.')
   } finally {
     loadingRating.value = false
   }
@@ -1224,14 +1306,14 @@ const refreshProfessorRating = async () => {
 
 const createNewSchedule = async () => {
   if (!newScheduleName.value.trim()) {
-    alert('Please enter a schedule name.')
+    showAlert('Please enter a schedule name.')
     return
   }
   
   // Check if user is authenticated
   if (!scheduleStore.currentUserId) {
     console.error('No user ID available. User may not be authenticated.')
-    alert('Please log in to create a schedule.')
+    showAlert('Please log in to create a schedule.')
     return
   }
   
@@ -1250,14 +1332,15 @@ const createNewSchedule = async () => {
     selectedScheduleId.value = newSchedule.id
     closeNewScheduleModal()
     
-    // Show success message
-    alert(`Schedule "${newSchedule.name}" created successfully!`)
+    // Show success message (using custom modal instead of browser alert)
+    // Success is already indicated by the schedule being selected and modal closing
+    // No need for additional popup
   } catch (error) {
     console.error('Error creating schedule:', error)
     
     // Show more specific error message
     const errorMessage = error instanceof Error ? error.message : 'Failed to create schedule. Please try again.'
-    alert(`Error: ${errorMessage}`)
+    showAlert(`Error: ${errorMessage}`)
   } finally {
     loading.value = false
   }
@@ -1270,12 +1353,12 @@ const closeNewScheduleModal = () => {
 
 const duplicateCurrentSchedule = async () => {
   if (!selectedScheduleId.value) {
-    alert('Please select a schedule to duplicate.')
+    showAlert('Please select a schedule to duplicate.')
     return
   }
   
   if (!duplicateScheduleName.value.trim()) {
-    alert('Please enter a name for the duplicated schedule.')
+    showAlert('Please enter a name for the duplicated schedule.')
     return
   }
   
@@ -1301,11 +1384,11 @@ const duplicateCurrentSchedule = async () => {
     selectedScheduleId.value = newSchedule.id
     closeDuplicateScheduleModal()
     
-    // Show success message
-    alert(`Schedule "${newSchedule.name}" created successfully!`)
+    // Success is already indicated by the schedule being selected and modal closing
+    // No need for additional popup
   } catch (error) {
     console.error('Failed to duplicate schedule:', error)
-    alert('Failed to duplicate schedule. Please try again.')
+    showAlert('Failed to duplicate schedule. Please try again.')
   } finally {
     loading.value = false
   }
@@ -1317,6 +1400,24 @@ const closeDuplicateScheduleModal = () => {
 }
 
 // Create Section Modal functions
+const openCreateSectionModal = () => {
+  if (!selectedScheduleId.value) {
+    showAlert('Please select a schedule or create a new one')
+    return
+  }
+  showCreateSectionModal.value = true
+}
+
+const showAlert = (message: string) => {
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
+const closeAlertModal = () => {
+  showAlertModal.value = false
+  alertMessage.value = ''
+}
+
 const closeCreateSectionModal = () => {
   showCreateSectionModal.value = false
   resetSectionForm()
@@ -1358,17 +1459,17 @@ const handleCreateSection = async () => {
   try {
     // Validate course fields
     if (!newSection.value.courseId || !newSection.value.courseId.trim()) {
-      alert('Please enter a course number.')
+      showAlert('Please enter a course number.')
       return
     }
     
     if (!newSection.value.courseTitle || !newSection.value.courseTitle.trim()) {
-      alert('Please enter a course name.')
+      showAlert('Please enter a course name.')
       return
     }
     
     if (!newSection.value.department || !newSection.value.department.trim()) {
-      alert('Please enter a department. It should be auto-filled from the course number.')
+      showAlert('Please enter a department. It should be auto-filled from the course number.')
       return
     }
     
@@ -1399,7 +1500,7 @@ const handleCreateSection = async () => {
       }))
     
     if (validTimeSlots.length === 0) {
-      alert('Please add at least one time slot with at least one day selected.')
+      showAlert('Please add at least one time slot with at least one day selected.')
       return
     }
     
@@ -1409,7 +1510,7 @@ const handleCreateSection = async () => {
       const end = new Date(`2000-01-01T${slot.endTime}`)
       
       if (start >= end) {
-        alert(`For time slot ${slot.days.join(', ')}, start time must be before end time.`)
+        showAlert(`For time slot ${slot.days.join(', ')}, start time must be before end time.`)
         return
       }
     }
@@ -1447,7 +1548,7 @@ const handleCreateSection = async () => {
           userMessage = 'The server is taking too long to respond. This often happens when the backend service is waking up from sleep (Render.com free tier). Please wait a moment and try again.'
         }
         
-        alert(`Error creating course: ${userMessage}`)
+        showAlert(`Error creating course: ${userMessage}`)
         throw error
       }
     } else {
@@ -1497,7 +1598,7 @@ const handleCreateSection = async () => {
         sectionToAdd.value = createdSection
         conflictingSections.value = conflicts
         showConflictModal.value = true
-        alert('Course and section created successfully! However, there are conflicts with your schedule. Please choose which course to replace.')
+        // Conflict modal will show - no need for additional alert
         closeCreateSectionModal()
         loading.value = false
         return
@@ -1545,7 +1646,7 @@ const handleCreateSection = async () => {
           // We need to create the section first, but it failed
           // This is a problem - the backend rejected it
           // Let's show a helpful error message
-          alert('Failed to create section due to schedule conflicts. The time slot you selected conflicts with existing courses in your schedule. Please choose a different time or remove conflicting courses first.')
+          showAlert('Failed to create section due to schedule conflicts. The time slot you selected conflicts with existing courses in your schedule. Please choose a different time or remove conflicting courses first.')
           loading.value = false
           throw error
         }
@@ -1576,7 +1677,7 @@ const handleCreateSection = async () => {
         sectionToAdd.value = createdSection
         conflictingSections.value = conflicts
         showConflictModal.value = true
-        alert('Course and section created successfully! However, there are conflicts with your schedule. Please choose which course to replace.')
+        // Conflict modal will show - no need for additional alert
         closeCreateSectionModal()
         return
       }
@@ -1596,7 +1697,7 @@ const handleCreateSection = async () => {
             sectionToAdd.value = createdSection
             conflictingSections.value = conflicts
             showConflictModal.value = true
-            alert('Course and section created successfully! However, there are conflicts with your schedule. Please choose which course to replace.')
+            // Conflict modal will show - no need for additional alert
             closeCreateSectionModal()
             return
           }
@@ -1606,7 +1707,7 @@ const handleCreateSection = async () => {
       }
     }
     
-    alert('Course and section created successfully!' + (selectedScheduleId.value ? ' The section has been added to your current schedule.' : ''))
+    // Success is indicated by the modal closing and section appearing in the schedule
     closeCreateSectionModal()
   } catch (error) {
     console.error('Error creating section:', error)
@@ -1620,7 +1721,7 @@ const handleCreateSection = async () => {
       userMessage = 'The server is temporarily unavailable. This may be because the backend service is starting up.\n\nPlease wait a moment and try again. Your form data has been preserved.'
     }
     
-    alert(`Error: ${userMessage}`)
+    showAlert(`Error: ${userMessage}`)
   } finally {
     loading.value = false
   }
@@ -1663,13 +1764,13 @@ const closeAISuggestionModal = () => {
 const getAISuggestionsForSection = async (sectionId: string) => {
   const section = sectionStore.getSectionById(sectionId)
   if (!section) {
-    alert('Section not found')
+    showAlert('Section not found')
     return
   }
   
   const course = courseStore.getCourseById(section.courseId)
   if (!course) {
-    alert('Course not found for selected section')
+    showAlert('Course not found for selected section')
     return
   }
   
@@ -1727,7 +1828,7 @@ const getAISuggestionsForSection = async (sectionId: string) => {
     
     // Validate that we have necessary data for AI
     if (!baseCourse.title || baseCourse.title === '') {
-      alert('This course is missing title information. AI suggestions require complete course data. Please try a different course.')
+      showAlert('This course is missing title information. AI suggestions require complete course data. Please try a different course.')
       closeAISuggestionModal()
       loadingAISuggestions.value = false
       return
@@ -1752,14 +1853,169 @@ const getAISuggestionsForSection = async (sectionId: string) => {
     closeAISuggestionModal()
     
     if (aiSuggestedCourses.value.length === 0) {
-      alert(`AI could not find alternative suggestions for ${baseCourse.course_code}. This may be because:\n- The course is too unique or specialized\n- Not enough similar courses exist in the database\n- The AI service needs more context\n\nTry selecting a different course from your schedule.`)
+      showAlert(`AI could not find alternative suggestions for ${baseCourse.course_code}. This may be because:\n- The course is too unique or specialized\n- Not enough similar courses exist in the database\n- The AI service needs more context\n\nTry selecting a different course from your schedule.`)
     }
   } catch (error) {
     console.error('Error getting AI suggestions:', error)
     closeAISuggestionModal()
-    alert('Failed to get AI suggestions. The AI service may be unavailable.')
+    showAlert('Failed to get AI suggestions. The AI service may be unavailable.')
   } finally {
     loadingAISuggestions.value = false
+  }
+}
+
+// Parse meeting_time string to TimeSlot format
+// Example formats: "MWF 09:00-10:30", "TuTh 14:00-15:30", "Mon Wed Fri 10:00-11:00"
+const parseMeetingTime = (meetingTime: string): TimeSlot[] => {
+  if (!meetingTime || !meetingTime.trim()) {
+    return []
+  }
+  
+  const timeSlots: TimeSlot[] = []
+  
+  // Day abbreviations mapping
+  const dayMap: Record<string, string> = {
+    'M': 'Monday',
+    'T': 'Tuesday',
+    'W': 'Wednesday',
+    'R': 'Thursday',
+    'F': 'Friday',
+    'MWF': 'Monday,Wednesday,Friday',
+    'MW': 'Monday,Wednesday',
+    'TuTh': 'Tuesday,Thursday',
+    'TTh': 'Tuesday,Thursday',
+    'TR': 'Tuesday,Thursday',
+    'Mon': 'Monday',
+    'Tue': 'Tuesday',
+    'Wed': 'Wednesday',
+    'Thu': 'Thursday',
+    'Fri': 'Friday',
+    'Monday': 'Monday',
+    'Tuesday': 'Tuesday',
+    'Wednesday': 'Wednesday',
+    'Thursday': 'Thursday',
+    'Friday': 'Friday'
+  }
+  
+  // Pattern to match: days (MWF, Mon Wed, etc.) followed by time (HH:MM-HH:MM)
+  const timePattern = /(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/
+  const timeMatch = meetingTime.match(timePattern)
+  
+  if (!timeMatch) {
+    return [] // Can't parse time
+  }
+  
+  const startTime = timeMatch[1]
+  const endTime = timeMatch[2]
+  
+  // Extract day part (everything before the time)
+  const dayPart = meetingTime.substring(0, timeMatch.index).trim()
+  
+  // Parse days
+  const days: string[] = []
+  
+  // Try to match common patterns
+  if (dayPart.includes('MWF') || dayPart.includes('Mon Wed Fri')) {
+    days.push('Monday', 'Wednesday', 'Friday')
+  } else if (dayPart.includes('MW') || dayPart.includes('Mon Wed')) {
+    days.push('Monday', 'Wednesday')
+  } else if (dayPart.includes('TuTh') || dayPart.includes('TTh') || dayPart.includes('TR') || dayPart.includes('Tue Thu')) {
+    days.push('Tuesday', 'Thursday')
+  } else {
+    // Try single day mappings
+    const dayTokens = dayPart.split(/\s+/)
+    dayTokens.forEach(token => {
+      const trimmed = token.trim()
+      if (dayMap[trimmed]) {
+        const mapped = dayMap[trimmed]
+        if (mapped.includes(',')) {
+          days.push(...mapped.split(','))
+        } else {
+          days.push(mapped)
+        }
+      } else if (trimmed.length === 1 && ['M', 'T', 'W', 'R', 'F'].includes(trimmed)) {
+        days.push(dayMap[trimmed])
+      }
+    })
+  }
+  
+  // Remove duplicates and filter to weekdays only
+  const uniqueDays = [...new Set(days)].filter(day => 
+    ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].includes(day)
+  )
+  
+  if (uniqueDays.length > 0) {
+    timeSlots.push({
+      days: uniqueDays,
+      startTime: startTime,
+      endTime: endTime,
+      location: '' // Location not available in meeting_time string
+    })
+  }
+  
+  return timeSlots
+}
+
+// Add suggested course to schedule using the new endpoint
+const addSuggestedCourseToSchedule = async (suggestedCourse: FilteredCourse) => {
+  if (!selectedScheduleId.value) {
+    showAlert('Please select a schedule first')
+    return
+  }
+  
+  try {
+    loading.value = true
+    
+    // Use the new endpoint that handles everything on the backend
+    const response = await CourseSchedulingApi.addSectionByCourseCode({
+      scheduleId: selectedScheduleId.value,
+      courseCode: suggestedCourse.course_code.trim(),
+      sectionNumber: suggestedCourse.section.trim() || '1'
+    })
+    
+    if (response.success) {
+      // Success - refresh schedule to show the new course
+      try {
+        await scheduleStore.fetchSchedule(selectedScheduleId.value)
+        await sectionStore.fetchAllSections()
+      } catch (fetchError) {
+        console.error('Error refreshing schedule:', fetchError)
+      }
+      
+      // Clear hover state
+      hoveredSuggestedCourse.value = null
+      
+      // Success is indicated by the UI updating with the new course
+      // No alert needed - the course appears in the schedule
+    } else {
+      // Handle specific error messages
+      let errorMessage = response.message || 'Failed to add course to schedule'
+      
+      if (response.message?.includes('Section not found') || response.message?.includes('section not found')) {
+        errorMessage = 'This section is no longer available. Please try a different course.'
+      } else if (response.message?.includes('Schedule not found') || response.message?.includes('schedule not found')) {
+        errorMessage = 'Schedule not found. Please refresh and try again.'
+      } else if (response.message?.includes('conflict') || response.message?.includes('Conflict')) {
+        errorMessage = 'This course conflicts with existing courses in your schedule. Please choose a different time slot.'
+      }
+      
+      showAlert(errorMessage)
+    }
+  } catch (error) {
+    console.error('Error adding suggested course:', error)
+    
+    const errorMsg = error instanceof Error ? error.message : ''
+    
+    // Handle specific error cases
+    if (errorMsg.includes('Unauthorized') || errorMsg.includes('unauthorized')) {
+      showAlert('You are not authorized to modify this schedule.')
+    } else if (errorMsg.includes('500') || errorMsg.includes('internal server')) {
+      showAlert('The server encountered an error. Please try again or add the course manually.')
+    } else {
+      showAlert('Failed to add course to schedule. Please try again.')
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -1791,7 +2047,7 @@ const getSectionInstructor = (sectionId: string) => {
 // Export to Google Calendar
 const exportToGoogleCalendar = () => {
   if (!currentSchedule.value || currentSchedule.value.sectionIds.length === 0) {
-    alert('No sections in the schedule to export.')
+    showAlert('No sections in the schedule to export.')
     return
   }
 
@@ -1845,7 +2101,7 @@ const exportToGoogleCalendar = () => {
   })
 
   setTimeout(() => {
-    alert(
+    showAlert(
       `Opened ${successCount} Google Calendar window${successCount > 1 ? 's' : ''}.\n\n` +
       'Please save each event in your Google Calendar.\n\n' +
       '💡 Tip: If not all tabs opened, check your popup blocker settings.'
@@ -2125,7 +2381,7 @@ const getConflictingSections = (newSection: Section): any[] => {
 
 const addSectionToSchedule = async (section: Section) => {
   if (!selectedScheduleId.value) {
-    alert('Please select a schedule first')
+    showAlert('Please select a schedule first')
     return
   }
   
@@ -2146,7 +2402,7 @@ const addSectionToSchedule = async (section: Section) => {
   } catch (error) {
     console.error('Error adding section to schedule:', error)
     const errorMsg = error instanceof Error ? error.message : 'Failed to add section to schedule'
-    alert(`Error: ${errorMsg}`)
+    showAlert(`Error: ${errorMsg}`)
   }
 }
 
@@ -2162,7 +2418,7 @@ const replaceSection = async (sectionIdToRemove: string) => {
     closeConflictModal()
   } catch (error) {
     console.error('Error replacing section:', error)
-    alert('Failed to replace section')
+    showAlert('Failed to replace section')
   }
 }
 
@@ -2204,7 +2460,7 @@ const removeSectionFromSchedule = async (sectionId: string) => {
   } catch (error) {
     console.error('Error removing section from schedule:', error)
     const errorMsg = error instanceof Error ? error.message : 'Failed to remove section from schedule'
-    alert(`Error: ${errorMsg}`)
+    showAlert(`Error: ${errorMsg}`)
   }
 }
 
@@ -2671,6 +2927,89 @@ onMounted(async () => {
 
 .modal-body {
   padding: 1.5rem;
+}
+
+/* Alert Modal Styles */
+.alert-modal {
+  max-width: 400px;
+}
+
+.alert-message {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #495057;
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+}
+
+/* Confirm Modal Styles */
+.confirm-modal {
+  max-width: 450px;
+}
+
+.confirm-message {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #495057;
+  margin: 0 0 0.75rem 0;
+  text-align: center;
+}
+
+.confirm-message strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.confirm-warning {
+  font-size: 0.9rem;
+  color: #dc3545;
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  font-weight: 600;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-delete {
+  background: #1a5490;
+  color: white;
+  font-weight: 600;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: #154376;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(26, 84, 144, 0.3);
+}
+
+.btn-cancel {
+  background: white;
+  color: #1a5490;
+  border: 2px solid #1a5490;
+  font-weight: 600;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(26, 84, 144, 0.2);
 }
 
 .course-info {

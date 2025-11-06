@@ -7,6 +7,8 @@ import type {
   CreateSectionRequest,
   CreateSectionResponse,
   AddSectionRequest,
+  AddSectionByCourseCodeRequest,
+  AddSectionByCourseCodeResponse,
   EditSectionRequest,
   EditSectionResponse,
   RemoveSectionRequest,
@@ -277,6 +279,13 @@ export class CourseSchedulingApi {
   // Schedule-Section Operations
   static async addSection(request: AddSectionRequest): Promise<void> {
     return apiRequest<void>('addSection', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    })
+  }
+
+  static async addSectionByCourseCode(request: AddSectionByCourseCodeRequest): Promise<AddSectionByCourseCodeResponse> {
+    return apiRequest<AddSectionByCourseCodeResponse>('addSectionByCourseCode', {
       method: 'POST',
       body: JSON.stringify(request)
     })
