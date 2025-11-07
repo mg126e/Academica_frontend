@@ -1,6 +1,6 @@
 <template>
   <div class="about">
-    <h1>About <div id="Academica">Academica</div></h1>
+    <h1 id="Adcademica">About Academica</h1>
     <p>The motivation Motivation for creating Academica was to let 
     students quickly compare classes by professor ratings, section times, 
     and fulfillment of graduation requirements to make planning their academic schedule quick and efficient.</p>
@@ -44,35 +44,6 @@ h1 {
   font-weight: bold;
 }
 
-.tech-stack {
-  margin-top: 2rem;
-}
-
-.tech-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.tech-item {
-  padding: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-}
-
-.tech-item h3 {
-  margin: 0 0 0.5rem 0;
-  color: #6D88D3;
-}
-
-.tech-item p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
 .story-images {
   display: flex;
   gap: 1.5rem;
@@ -81,17 +52,19 @@ h1 {
 }
 
 .story-images img {
-  flex: 1 1 280px;
-  max-width: 100%;
+  flex: 1 1 224px;
+  max-width: 80%;
   border-radius: 12px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  margin: 0 auto;
 }
 
 .cta-link {
-  display: inline-block;
-  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem auto 0;
   padding: 0.75rem 1.5rem;
-  background-color:rgb(128, 156, 235);
+  background-color: #E5D1FF;
   color: #fff;
   border-radius: 999px;
   text-decoration: none;
