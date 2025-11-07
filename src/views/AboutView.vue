@@ -1,30 +1,23 @@
 <template>
   <div class="about">
-    <h1>About Academica</h1>
-    <p>This is the about page of the Academica application.</p>
-    <p>Built with modern web technologies to provide a robust and scalable frontend solution.</p>
-    
-    <div class="tech-stack">
-      <h2>Technology Stack:</h2>
-      <div class="tech-grid">
-        <div class="tech-item">
-          <h3>Vue.js 3</h3>
-          <p>Progressive JavaScript framework</p>
-        </div>
-        <div class="tech-item">
-          <h3>TypeScript</h3>
-          <p>Type-safe JavaScript development</p>
-        </div>
-        <div class="tech-item">
-          <h3>Vite</h3>
-          <p>Fast build tool and dev server</p>
-        </div>
-        <div class="tech-item">
-          <h3>Pinia</h3>
-          <p>Modern state management</p>
-        </div>
-      </div>
+    <h1>About <div id="Academica">Academica</div></h1>
+    <p>The motivation Motivation for creating Academica was to let 
+    students quickly compare classes by professor ratings, section times, 
+    and fulfillment of graduation requirements to make planning their academic schedule quick and efficient.</p>
+    <p>This is how it started:</p>
+    <div class="story-images">
+      <img
+        src="https://raw.githubusercontent.com/mg126e/61040-portfolio/main/assignments/Images/IMG_0285.jpg"
+        alt="Early concept sketch of Academica project"
+      />
+      <img
+        src="https://raw.githubusercontent.com/mg126e/61040-portfolio/main/assignments/Images/IMG_0286.jpg"
+        alt="Whiteboard planning for Academica project"
+      />
     </div>
+
+    <RouterLink to="/" class="cta-link">Click here and see how it's going</RouterLink>
+    
   </div>
 </template>
 
@@ -44,6 +37,11 @@
 h1 {
   color: #2c3e50;
   margin-bottom: 1rem;
+}
+
+#Academica {
+  font-family: 'Caladea', serif;
+  font-weight: bold;
 }
 
 .tech-stack {
@@ -73,6 +71,37 @@ h1 {
   margin: 0;
   color: #666;
   font-size: 0.9rem;
+}
+
+.story-images {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+
+.story-images img {
+  flex: 1 1 280px;
+  max-width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.cta-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background-color:rgb(128, 156, 235);
+  color: #fff;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cta-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
 }
 </style>
 
