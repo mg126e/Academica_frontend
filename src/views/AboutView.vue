@@ -3,7 +3,9 @@
     <h1><div id="Academica">About</div></h1>
     <p>The motivation Motivation for creating Academica was to let 
     students quickly compare classes by professor ratings, section times, 
-    and fulfillment of graduation requirements to make planning their academic schedule quick and efficient.\n</p>
+    and fulfillment of graduation requirements to make planning their academic schedule quick and efficient.</p>
+    <p></p>
+    <p></p>
     <p>This is how it started:</p>
     <div class="story-images">
       <img
