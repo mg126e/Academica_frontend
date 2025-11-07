@@ -2632,7 +2632,7 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 400px 1fr;
   gap: 0.375rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 /* Calendar Styles */
@@ -3720,8 +3720,8 @@ onMounted(async () => {
   border-radius: 8px;
   border: 1px solid #e9ecef;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  height: fit-content;
-  max-height: calc(80vh * 1.96);
+  height: 100%;
+  max-height: none;
   overflow: hidden;
   display: flex;
   flex-direction: column;
