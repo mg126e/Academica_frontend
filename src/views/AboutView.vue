@@ -1,6 +1,6 @@
 <template>
   <div class="about">
-    <h1><div id="Academica">About Academica</div></h1>
+    <h1><div id="Academica">About</div></h1>
     <p>The motivation Motivation for creating Academica was to let 
     students quickly compare classes by professor ratings, section times, 
     and fulfillment of graduation requirements to make planning their academic schedule quick and efficient.\n</p>
@@ -52,8 +52,8 @@ h1 {
 }
 
 .story-images img {
-  flex: 1 1 224px;
-  max-width: 80%;
+  flex: 1 1 292px;
+  max-width: 104%;
   border-radius: 12px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   margin: 0 auto;
@@ -64,13 +64,14 @@ h1 {
   justify-content: center;
   align-items: center;
   margin: 1.5rem auto 0;
-  padding: 0.75rem 1.2rem;
+  padding: 0.75rem 0.84rem;
   background-color:rgb(201, 163, 249);
   color: #fff;
   border-radius: 999px;
   text-decoration: none;
   font-weight: 600;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  opacity: 0.8;
 }
 
 .cta-link:hover {
