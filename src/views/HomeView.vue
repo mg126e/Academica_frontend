@@ -4264,7 +4264,8 @@ onMounted(async () => {
 }
 
 .course-list {
-  flex: 1;
+  flex: 0 0 auto;
+  max-height: 20vh;
   overflow-y: auto;
   padding: 0.75rem;
 }
