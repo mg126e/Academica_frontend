@@ -1,8 +1,8 @@
 # Academica Frontend
 
-[User Journey](Academica_frontend\UserJourney.md)
+[User Journey](UserJourney.md)
 
-[Video Walk Through](Academica_frontend\61040rec.mp4)
+[Video Walk Through](61040rec.mp4)
 
 
 ## Features
