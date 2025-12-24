@@ -2,7 +2,7 @@
 
 [User Journey](UserJourney.md)
 
-[Video Walk Through](61040rec.mp4)
+[Video Walk Through](https://youtu.be/VehjqYeD4gg)
 
 
 ## Features
