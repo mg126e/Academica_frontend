@@ -1,8 +1,8 @@
 # Academica Frontend
 
-[User Journey](C:\Users\marin\OneDrive\Desktop\61040-portfolio\Academica_frontend\UserJourney.md)
+[User Journey](Academica_frontend\UserJourney.md)
 
-[Video](C:\Users\marin\OneDrive\Desktop\61040-portfolio\Academica_frontend\61040rec.mp4)
+[Video Walk Through](Academica_frontend\61040rec.mp4)
 
 
 ## Features
