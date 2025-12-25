@@ -262,19 +262,39 @@
       </div>
       
       <div class="calendar-body">
-        <div class="time-slot" v-for="time in timeSlots" :key="time">
-          <div class="time-label">{{ time }}</div>
+        <div class="time-column-labels">
+          <div class="time-label" v-for="time in timeSlots" :key="time">{{ time }}</div>
+        </div>
+        <div class="calendar-days-grid">
           <div class="day-column" v-for="day in days" :key="day">
-            <template v-for="(course, index) in getCoursesForTimeSlot(day, time)" :key="course.id">
+            <div class="time-slot-row" v-for="time in timeSlots" :key="time" :data-time="time"></div>
+            <template v-for="(course, courseIndex) in scheduleCourses.value.filter(c => c.day.includes(day))" :key="course.id">
               <div 
                 :class="[
                   'course-block', 
                   course.color, 
                   { 'preview-block': course.isPreview },
-                  { 'split-block': getCoursesForTimeSlot(day, time).length === 2 },
-                  { 'split-left': getCoursesForTimeSlot(day, time).length === 2 && index === 0 },
-                  { 'split-right': getCoursesForTimeSlot(day, time).length === 2 && index === 1 }
+                  (() => {
+                    const overlapping = getOverlappingCourses(day, course)
+                    if (overlapping.length > 0) {
+                      const allOverlapping = [course, ...overlapping].sort((a, b) => 
+                        timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+                      )
+                      const index = allOverlapping.findIndex(c => c.id === course.id)
+                      return {
+                        'split-block': true,
+                        'split-left': index === 0,
+                        'split-right': index === 1
+                      }
+                    }
+                    return {}
+                  })()
                 ]"
+                :style="{
+                  top: `${getCourseTopPosition(course.startTime)}px`,
+                  height: `${getCourseSlotSpan(course.startTime, course.endTime) * 60 - 4}px`,
+                  zIndex: course.isPreview ? 5 : 2
+                }"
                 @click="showCourseDetails(course)"
                 @mouseenter="!course.isPreview && (hoveredCourse = course)"
                 @mouseleave="hoveredCourse = null"
@@ -1189,6 +1209,45 @@ const getTimeSlotForCourse = (courseStartTime: string): string => {
   
   // If course is after last slot, use last slot
   return timeSlots[timeSlots.length - 1]
+}
+
+// Helper to calculate how many time slots a course spans
+const getCourseSlotSpan = (startTime: string, endTime: string): number => {
+  const startMinutes = timeToMinutes(startTime)
+  const endMinutes = timeToMinutes(endTime)
+  const duration = endMinutes - startMinutes
+  
+  // Each time slot is 30 minutes, so calculate how many slots are needed
+  // Round up to ensure the block covers the full duration
+  return Math.ceil(duration / 30)
+}
+
+// Helper to calculate the top position of a course block
+const getCourseTopPosition = (startTime: string): number => {
+  const startMinutes = timeToMinutes(startTime)
+  const firstSlotMinutes = timeToMinutes(timeSlots[0])
+  
+  // Calculate how many minutes from the first time slot
+  const minutesFromFirst = startMinutes - firstSlotMinutes
+  
+  // Each time slot is 60px tall, and each slot represents 30 minutes
+  // Calculate the position: (minutes from first / 30) * 60
+  const slotIndex = minutesFromFirst / 30
+  return slotIndex * 60 + 2 // Add 2px for padding
+}
+
+// Helper to check if two courses overlap in time
+const coursesOverlap = (course1: any, course2: any): boolean => {
+  return timeRangesOverlap(course1.startTime, course1.endTime, course2.startTime, course2.endTime)
+}
+
+// Helper to get overlapping courses for a given day and course
+const getOverlappingCourses = (day: string, course: any): any[] => {
+  return scheduleCourses.value.filter(c => 
+    c.id !== course.id &&
+    c.day.includes(day) &&
+    coursesOverlap(c, course)
+  )
 }
 
 // Methods
@@ -2685,18 +2744,15 @@ onMounted(async () => {
 
 .calendar-body {
   /* Remove fixed height and scrolling - let it flow with page */
-}
-
-.time-slot {
+  position: relative;
+  overflow: visible;
   display: grid;
-  grid-template-columns: 50px repeat(5, 1fr);
-  border-bottom: 1px solid #f1f3f4;
-  min-height: 60px;
-  transition: background-color 0.2s ease;
+  grid-template-columns: 50px 1fr;
 }
 
-.time-slot:hover {
-  background: #fafbfc;
+.time-column-labels {
+  display: flex;
+  flex-direction: column;
 }
 
 .time-label {
@@ -2704,30 +2760,50 @@ onMounted(async () => {
   font-size: 0.75rem;
   color: #6c757d;
   border-right: 1px solid #dee2e6;
+  border-bottom: 1px solid #f1f3f4;
   display: flex;
   align-items: center;
   background: #f8f9fa;
+  min-height: 60px;
+  box-sizing: border-box;
+}
+
+.calendar-days-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  position: relative;
 }
 
 .day-column {
   position: relative;
-  min-height: 60px;
+  min-height: calc(60px * 29); /* 29 time slots * 60px each */
   padding: 2px;
   background: #ffffff;
   transition: background-color 0.2s ease;
   margin-right: 1px;
+  overflow: visible;
 }
 
-.day-column:last-child {
-  margin-right: 0;
+.time-slot-row {
+  min-height: 60px;
+  border-bottom: 1px solid #f1f3f4;
+  box-sizing: border-box;
 }
 
 .day-column:nth-child(even) {
   background: #fafbfc;
 }
 
+.day-column:nth-child(even) .time-slot-row {
+  background: #fafbfc;
+}
+
 .day-column:hover {
   background: #f8f9fa;
+}
+
+.day-column:last-child {
+  margin-right: 0;
 }
 
 /* Course Block Styles */
@@ -2736,7 +2812,6 @@ onMounted(async () => {
   left: 2px;
   right: 2px;
   top: 2px;
-  bottom: 2px;
   border-radius: 4px;
   padding: 0.5rem;
   cursor: pointer;
@@ -3626,18 +3701,22 @@ onMounted(async () => {
     font-size: 0.75rem;
   }
   
-  .time-slot {
-    grid-template-columns: 40px repeat(5, 1fr);
-    min-height: 50px;
+  .calendar-body {
+    grid-template-columns: 40px 1fr;
   }
   
   .time-label {
     padding: 0.25rem;
     font-size: 0.625rem;
+    min-height: 50px;
+  }
+  
+  .time-slot-row {
+    min-height: 50px;
   }
   
   .day-column {
-    min-height: 50px;
+    min-height: calc(50px * 29);
   }
   
   .course-block {
@@ -3674,20 +3753,23 @@ onMounted(async () => {
   }
   
   .calendar-body {
-    /* Remove fixed height for mobile too */
+    grid-template-columns: 35px 1fr;
   }
   
   .calendar-header {
     grid-template-columns: 35px repeat(5, 1fr);
   }
   
-  .time-slot {
-    grid-template-columns: 35px repeat(5, 1fr);
+  .time-label {
+    min-height: 45px;
+  }
+  
+  .time-slot-row {
     min-height: 45px;
   }
   
   .day-column {
-    min-height: 45px;
+    min-height: calc(45px * 29);
   }
   
   .day-header {
