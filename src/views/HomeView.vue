@@ -270,26 +270,7 @@
             <div class="time-slot-row" v-for="time in timeSlots" :key="time" :data-time="time"></div>
             <template v-for="(course, courseIndex) in scheduleCourses.filter((c: any) => c.day.includes(day))" :key="course.id">
               <div 
-                :class="[
-                  'course-block', 
-                  course.color, 
-                  { 'preview-block': course.isPreview },
-                  (() => {
-                    const overlapping = getOverlappingCourses(day, course)
-                    if (overlapping.length > 0) {
-                      const allOverlapping = [course, ...overlapping].sort((a, b) => 
-                        timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-                      )
-                      const index = allOverlapping.findIndex(c => c.id === course.id)
-                      return {
-                        'split-block': true,
-                        'split-left': index === 0,
-                        'split-right': index === 1
-                      }
-                    }
-                    return {}
-                  })()
-                ]"
+                :class="getCourseBlockClasses(day, course)"
                 :style="{
                   top: `${getCourseTopPosition(course.startTime)}px`,
                   height: `${getCourseSlotSpan(course.startTime, course.endTime) * 60 - 4}px`,
@@ -1248,6 +1229,38 @@ const getOverlappingCourses = (day: string, course: any): any[] => {
     c.day.includes(day) &&
     coursesOverlap(c, course)
   )
+}
+
+// Helper to get class names for a course block, including split classes for overlapping courses
+const getCourseBlockClasses = (day: string, course: any): Record<string, boolean> => {
+  const classes: Record<string, boolean> = {
+    'course-block': true,
+    [course.color]: true,
+    'preview-block': course.isPreview || false
+  }
+  
+  const overlapping = getOverlappingCourses(day, course)
+  if (overlapping.length > 0) {
+    // Sort all overlapping courses by start time, then by ID for consistency
+    const allOverlapping = [course, ...overlapping].sort((a, b) => {
+      const timeDiff = timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+      if (timeDiff !== 0) return timeDiff
+      // If same start time, sort by ID for consistent ordering
+      return a.id.localeCompare(b.id)
+    })
+    const index = allOverlapping.findIndex(c => c.id === course.id)
+    
+    classes['split-block'] = true
+    if (index === 0) {
+      classes['split-left'] = true
+    } else if (index === 1) {
+      classes['split-right'] = true
+    }
+    // If more than 2 courses overlap, we still only show left/right for first two
+    // Additional courses will stack (this is an edge case)
+  }
+  
+  return classes
 }
 
 // Methods
@@ -2895,13 +2908,11 @@ onMounted(async () => {
 
 .split-left {
   left: 2px;
-  right: 50%;
   width: calc(50% - 3px);
 }
 
 .split-right {
-  left: 50%;
-  right: 2px;
+  left: calc(50% + 1px);
   width: calc(50% - 3px);
 }
 
