@@ -268,7 +268,7 @@
         <div class="calendar-days-grid">
           <div class="day-column" v-for="day in days" :key="day">
             <div class="time-slot-row" v-for="time in timeSlots" :key="time" :data-time="time"></div>
-            <template v-for="(course, courseIndex) in scheduleCourses.value.filter(c => c.day.includes(day))" :key="course.id">
+            <template v-for="(course, courseIndex) in scheduleCourses.filter((c: any) => c.day.includes(day))" :key="course.id">
               <div 
                 :class="[
                   'course-block', 
